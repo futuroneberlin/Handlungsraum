@@ -76,8 +76,8 @@
                 seed: hashToSeed(`${sourceLabel}-${index}-${chunk}`),
                 source: sourceLabel === 'pdf' ? 'pdf' : undefined
             }))
-            .slice(0, MAX_PDF_FRAGMENTS)
-            .filter((fragment) => fragment.text.length > 18);
+            .filter((fragment) => fragment.text.length > 18)
+            .slice(0, MAX_PDF_FRAGMENTS);
     }
 
     function appendFragments(nextFragments) {
