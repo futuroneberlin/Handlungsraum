@@ -1,14 +1,14 @@
 :root {
-    --bg: #090909;
-    --bg-deep: #040404;
-    --bg-surface: #101010;
-    --text: #ede8dc;
-    --muted: rgba(237, 232, 220, 0.7);
-    --accent: #cfbb52;
-    --accent-soft: rgba(207, 187, 82, 0.14);
-    --concrete: rgba(255, 255, 255, 0.028);
-    --asphalt: rgba(255, 255, 255, 0.015);
-    --shadow: rgba(0, 0, 0, 0.68);
+    --bg: #111213;
+    --bg-deep: #080909;
+    --bg-surface: #171819;
+    --text: #efebe0;
+    --muted: rgba(239, 235, 224, 0.72);
+    --accent: #d1bf58;
+    --accent-soft: rgba(209, 191, 88, 0.12);
+    --concrete: rgba(255, 255, 255, 0.024);
+    --asphalt: rgba(255, 255, 255, 0.012);
+    --shadow: rgba(0, 0, 0, 0.72);
     --font: "Helvetica Neue Condensed", "Arial Narrow", "Nimbus Sans Narrow", "Liberation Sans Narrow", Helvetica, Arial, sans-serif;
 }
 
@@ -26,9 +26,10 @@ body {
     overflow: hidden;
     color: var(--text);
     background:
-        radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.045), transparent 24%),
-        radial-gradient(circle at 82% 84%, rgba(255, 255, 255, 0.018), transparent 26%),
-        linear-gradient(180deg, #121212 0%, var(--bg-surface) 28%, var(--bg) 62%, var(--bg-deep) 100%);
+        radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.032), transparent 24%),
+        radial-gradient(circle at 82% 84%, rgba(255, 255, 255, 0.014), transparent 26%),
+        radial-gradient(circle at 52% 48%, rgba(255, 255, 255, 0.016), transparent 34%),
+        linear-gradient(180deg, #18191a 0%, var(--bg-surface) 26%, var(--bg) 62%, var(--bg-deep) 100%);
     font-family: var(--font);
     letter-spacing: 0.01em;
     text-rendering: optimizeLegibility;
@@ -42,11 +43,11 @@ body::before {
     pointer-events: none;
     z-index: 2;
     background:
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 240px),
-        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 180px),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 24%, transparent 76%, rgba(0, 0, 0, 0.2));
+        radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.018), transparent 24%),
+        radial-gradient(circle at 74% 78%, rgba(255, 255, 255, 0.014), transparent 26%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.16));
     mix-blend-mode: soft-light;
-    opacity: 0.52;
+    opacity: 0.48;
 }
 
 body::after {
@@ -56,12 +57,12 @@ body::after {
     pointer-events: none;
     z-index: 3;
     background:
-        radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.38) 100%),
-        linear-gradient(135deg, rgba(207, 187, 82, 0.018), transparent 30%, transparent 70%, rgba(207, 187, 82, 0.018));
+        radial-gradient(circle at center, transparent 52%, rgba(0, 0, 0, 0.42) 100%),
+        linear-gradient(135deg, rgba(209, 191, 88, 0.012), transparent 30%, transparent 70%, rgba(209, 191, 88, 0.012));
     box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-        inset 0 0 180px rgba(0, 0, 0, 0.55);
-    opacity: 0.92;
+        inset 0 0 0 1px rgba(255, 255, 255, 0.022),
+        inset 0 0 180px rgba(0, 0, 0, 0.58);
+    opacity: 0.88;
 }
 
 #roomCanvas {
@@ -71,7 +72,7 @@ body::after {
     height: 100vh;
     z-index: 1;
     pointer-events: none;
-    filter: contrast(1.04) saturate(0.88) brightness(0.98);
+    filter: contrast(1.01) saturate(0.84) brightness(0.95);
 }
 
 @media (prefers-reduced-motion: reduce) {

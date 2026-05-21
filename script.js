@@ -3,7 +3,7 @@
 
     const canvas = document.getElementById('roomCanvas');
     const context = canvas.getContext('2d', { alpha: false });
-    const fontStack = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+    const fontStack = '"Helvetica Neue Condensed", "Arial Narrow", "Nimbus Sans Narrow", "Liberation Sans Narrow", Helvetica, Arial, sans-serif';
     const PDF_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
     const PDF_JS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const PDF_SOURCES = [
@@ -182,16 +182,16 @@
     }
 
     function initialize() {
-        const cols = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(fragments.length))));
-        const rows = Math.max(2, Math.ceil(fragments.length / cols));
-        const paddingX = Math.max(48, Math.floor(state.width * 0.08));
-        const paddingY = Math.max(48, Math.floor(state.height * 0.08));
+        const rows = Math.min(4, Math.max(2, Math.ceil(fragments.length / 4)));
+        const cols = Math.max(3, Math.ceil(fragments.length / rows));
+        const paddingX = Math.max(72, Math.floor(state.width * 0.1));
+        const paddingY = Math.max(72, Math.floor(state.height * 0.1));
         const usableWidth = Math.max(1, state.width - (paddingX * 2));
         const usableHeight = Math.max(1, state.height - (paddingY * 2));
-        const gapX = Math.max(36, Math.floor(usableWidth * 0.045));
-        const gapY = Math.max(44, Math.floor(usableHeight * 0.06));
-        const cellW = Math.max(180, Math.floor((usableWidth - (gapX * (cols - 1))) / cols));
-        const cellH = Math.max(96, Math.floor((usableHeight - (gapY * (rows - 1))) / rows));
+        const gapX = Math.max(56, Math.floor(usableWidth * 0.08));
+        const gapY = Math.max(68, Math.floor(usableHeight * 0.12));
+        const cellW = Math.max(170, Math.floor((usableWidth - (gapX * (cols - 1))) / cols));
+        const cellH = Math.max(92, Math.floor((usableHeight - (gapY * (rows - 1))) / rows));
 
         fragments.forEach((fragment, index) => {
             const col = index % cols;
@@ -225,14 +225,33 @@
     }
 
     function drawBackground(time) {
-        context.fillStyle = '#000000';
+        context.fillStyle = '#121314';
+        context.fillRect(0, 0, state.width, state.height);
+
+        const concrete = context.createLinearGradient(0, 0, state.width, state.height);
+        concrete.addColorStop(0, 'rgba(255,255,255,0.018)');
+        concrete.addColorStop(0.45, 'rgba(255,255,255,0.008)');
+        concrete.addColorStop(1, 'rgba(0,0,0,0.10)');
+        context.fillStyle = concrete;
+        context.fillRect(0, 0, state.width, state.height);
+
+        const slabA = context.createRadialGradient(state.width * 0.24, state.height * 0.28, 0, state.width * 0.24, state.height * 0.28, Math.max(state.width, state.height) * 0.52);
+        slabA.addColorStop(0, 'rgba(255,255,255,0.024)');
+        slabA.addColorStop(1, 'rgba(255,255,255,0)');
+        context.fillStyle = slabA;
+        context.fillRect(0, 0, state.width, state.height);
+
+        const slabB = context.createRadialGradient(state.width * 0.78, state.height * 0.74, 0, state.width * 0.78, state.height * 0.74, Math.max(state.width, state.height) * 0.46);
+        slabB.addColorStop(0, 'rgba(0,0,0,0.18)');
+        slabB.addColorStop(1, 'rgba(0,0,0,0)');
+        context.fillStyle = slabB;
         context.fillRect(0, 0, state.width, state.height);
     }
 
     function applyMotion(fragment, time) {
         const phase = fragment.seed * 6.283185307179586;
-        const microX = Math.sin((time * 0.00012) + phase) * 1.2;
-        const microY = Math.cos((time * 0.00009) + (phase * 1.37)) * 0.75;
+        const microX = Math.sin((time * 0.00003) + phase) * 0.35;
+        const microY = Math.cos((time * 0.000025) + (phase * 1.37)) * 0.22;
         fragment.x = fragment.baseX + microX;
         fragment.y = fragment.baseY + microY;
     }
@@ -260,11 +279,11 @@
     }
 
     function drawFragment(fragment, time) {
-        const size = 18;
-        const lineHeight = Math.max(22, size * 1.2);
-        const maxWidth = Math.max(160, Math.min(280, (fragment.cellW || (state.width * 0.22)) * 0.82));
-        context.font = `400 ${size}px ${fontStack}`;
-        context.fillStyle = `rgba(243, 241, 234, 0.86)`;
+        const size = 19;
+        const lineHeight = Math.max(24, size * 1.18);
+        const maxWidth = Math.max(160, Math.min(300, (fragment.cellW || (state.width * 0.22)) * 0.74));
+        context.font = `700 ${size}px ${fontStack}`;
+        context.fillStyle = `rgba(241, 238, 230, 0.9)`;
 
         const lines = wrapText(fragment.text, maxWidth);
         const totalHeight = (lines.length - 1) * lineHeight;
