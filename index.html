@@ -3,416 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Handlungsraum | Konzept und Live-Daten</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Handlungsraum</title>
     <style>
         :root {
-            --bg: #0b0b0c;
-            --panel: rgba(18, 18, 20, 0.82);
-            --line: rgba(255, 255, 255, 0.1);
-            --line-strong: rgba(255, 255, 255, 0.18);
-            --text: #f4f1ea;
-            --muted: rgba(244, 241, 234, 0.68);
-            --accent: #d7b57a;
-            --accent-soft: rgba(215, 181, 122, 0.18);
-            --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+            --bg: #050505;
+            --text: #ffffff;
+            --muted: #555555;
+            --border: #1a1a1a;
         }
 
-        * { box-sizing: border-box; }
-
-        html { scroll-behavior: smooth; }
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
 
         body {
-            margin: 0;
-            min-height: 100vh;
-            overflow-x: hidden;
-            background:
-                radial-gradient(circle at top, rgba(215, 181, 122, 0.08), transparent 36%),
-                linear-gradient(180deg, #090909 0%, #0d0d0f 60%, #0b0b0c 100%);
+            background-color: var(--bg);
             color: var(--text);
-            font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
-            text-rendering: optimizeLegibility;
-            -webkit-font-smoothing: antialiased;
+            
+            font-family: Grotesk;
+            font-size: 11px;
+            line-height: 1.6;
+            letter-spacing: 0.04em;
+            overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-            background-size: 42px 42px;
-            mask-image: linear-gradient(180deg, rgba(0,0,0,0.32), rgba(0,0,0,0));
-            pointer-events: none;
-            z-index: 0;
-        }
-
+        
         canvas {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
             z-index: 1;
             pointer-events: none;
         }
 
-        .shell {
+        .layout {
             position: relative;
-            z-index: 2;
-            max-width: 1200px;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 32px 20px 88px;
         }
 
-        .eyebrow {
-            display: inline-flex;
-            gap: 10px;
-            align-items: center;
-            padding: 8px 12px;
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            background: rgba(255,255,255,0.03);
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            font-size: 0.72rem;
-            margin-bottom: 16px;
-        }
-
-        .eyebrow::before {
-            content: "";
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: var(--accent);
-            box-shadow: 0 0 0 4px var(--accent-soft);
-        }
-
-        h1 {
-            margin: 0;
-            font-size: clamp(2.6rem, 5vw, 5.2rem);
-            line-height: 0.92;
-            letter-spacing: -0.05em;
-            text-transform: uppercase;
-            max-width: 10ch;
-        }
-
-        .lede {
-            margin: 18px 0 0;
-            max-width: 72ch;
-            font-size: 1.02rem;
-            line-height: 1.78;
-            color: var(--muted);
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 22px;
-            margin-top: 28px;
-        }
-
-        .panel {
-            padding: 22px;
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: var(--panel);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(14px);
-        }
-
-        .panel-header {
+        .panel-left {
+            border-right: 1px solid var(--border);
+            padding: 50px;
             display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 16px;
-            margin-bottom: 16px;
+            flex-direction: column;
+            gap: 40px;
         }
 
-        .panel h2 {
-            margin: 0;
-            font-size: 1.12rem;
-            letter-spacing: -0.02em;
+        .panel-right {
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
         }
 
-        .panel small {
-            color: var(--muted);
+        .header h1 {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
             text-transform: uppercase;
-            letter-spacing: 0.14em;
-            font-size: 0.7rem;
-        }
-
-        .copy {
-            margin: 0;
-            color: var(--muted);
-            font-size: 0.96rem;
-            line-height: 1.75;
-        }
-
-        .concept-list {
-            display: grid;
-            gap: 12px;
-            margin-top: 18px;
-        }
-
-        .concept-item {
-            padding: 14px 16px;
-            border-radius: 16px;
-            border: 1px solid var(--line);
-            background: rgba(255,255,255,0.03);
-        }
-
-        .concept-item strong {
-            display: block;
             margin-bottom: 6px;
-            font-size: 0.9rem;
-            letter-spacing: 0.08em;
+        }
+
+        .header p {
+            color: var(--muted);
+            font-size: 10px;
             text-transform: uppercase;
         }
 
-        .concept-item span {
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
             color: var(--muted);
-            line-height: 1.65;
-            font-size: 0.94rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+            margin-bottom: 24px;
+            letter-spacing: 0.1em;
         }
 
-        .feed {
-            display: grid;
-            gap: 14px;
+        .concept-block {
+            margin-bottom: 32px;
         }
 
-        .feed-item {
-            padding: 16px;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+        .concept-block h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .feed-item header {
+        .concept-block p {
+            color: #b0b0b0;
+        }
+
+        .stream-item {
+            border-left: 1px solid #333333;
+            padding-left: 14px;
+            margin-bottom: 20px;
+        }
+
+        .stream-source {
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
             display: flex;
             justify-content: space-between;
-            gap: 12px;
-            align-items: baseline;
-            margin-bottom: 10px;
         }
 
-        .feed-item header strong {
-            font-size: 0.96rem;
+        .stream-text {
+            color: #cccccc;
         }
 
-        .feed-item header span {
-            color: var(--muted);
-            font-size: 0.74rem;
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-        }
-
-        .feed-item p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.68;
-        }
-
-        .terms {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        .term {
-            padding: 8px 10px;
-            border-radius: 999px;
-            border: 1px solid var(--line-strong);
-            color: var(--text);
-            font-size: 0.8rem;
-            letter-spacing: 0.06em;
-            background: rgba(255,255,255,0.035);
-        }
-
-        @media (max-width: 960px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                max-width: none;
-            }
+        @media (max-width: 800px) {
+            .layout { grid-template-columns: 1fr; }
+            .panel-left { border-right: none; border-bottom: 1px solid var(--border); }
         }
     </style>
 </head>
 <body>
-    <canvas id="backgroundCanvas" aria-hidden="true"></canvas>
 
-    <main class="shell">
-        <div class="eyebrow">Handlungsraum</div>
-        <h1>Konzeptpapier und Live-Daten</h1>
-        <p class="lede">Reduziert auf das Wesentliche: sachliche Grotesk, klare Flächen und aktuelle Begriffssplitter aus dem Diskurs um soziale Plastik, Kunst als Erfahrung und menschliche Praxis.</p>
+    <canvas id="motionCanvas"></canvas>
 
-        <section class="grid">
-            <article class="panel">
-                <div class="panel-header">
-                    <h2>Konzeptpapier</h2>
-                    <small>Textkern</small>
+    <main class="layout">
+        
+        <section class="panel-left">
+            <header class="header">
+                <h1>Handlungsraum</h1>
+                <p>Konzeptpapier und Live-Daten</p>
+            </header>
+
+            <div>
+                <h2 class="section-title">Konzeptpapier</h2>
+                
+                <div class="concept-block">
+                    <h3>Kunst als Erfahrung</h3>
+                    <p>Erfahrung, Handlung und Wahrnehmung werden als zusammenhängender, dynamischer Prozess verstanden. Die schöpferische Praxis löst sich vom statischen Objekt und verlagert sich in den Vollzug der ästhetischen Erfahrung (nach John Dewey).</p>
                 </div>
-                <p class="copy">Das Projekt verbindet John Dewey, Georg W. Bertram und Joseph Beuys in einer offenen digitalen Struktur. Die Seite bleibt bewusst nüchtern, damit Begriffe, Beziehungen und Daten in den Vordergrund treten.</p>
 
-                <div class="concept-list">
-                    <div class="concept-item">
-                        <strong>Kunst als Erfahrung</strong>
-                        <span>Erfahrung, Handlung und Wahrnehmung werden als zusammenhängender Prozess gelesen.</span>
-                    </div>
-                    <div class="concept-item">
-                        <strong>Kunst als menschliche Praxis</strong>
-                        <span>Der Fokus liegt auf sozialer Praxis, nicht auf dekorativer Repräsentation.</span>
-                    </div>
-                    <div class="concept-item">
-                        <strong>Soziale Plastik</strong>
-                        <span>Das Konzept öffnet den Raum für gesellschaftliche Formung und relationales Arbeiten.</span>
-                    </div>
+                <div class="concept-block">
+                    <h3>Kunst als menschliche Praxis</h3>
+                    <p>Fokus auf die fundamentale soziale Praxis menschlicher Selbstverständigung und Transformation, jenseits rein dekorativer Repräsentationslogiken des Kunstmarktes (nach Georg W. Bertram).</p>
                 </div>
-            </article>
 
-            <article class="panel">
-                <div class="panel-header">
-                    <h2>Live-Daten</h2>
-                    <small>Begriffsfragmente</small>
+                <div class="concept-block">
+                    <h3>Soziale Plastik</h3>
+                    <p>Die Übertragung bildhauerischer Kategorien – wie Widerstand, Volumen, Formbarkeit und Veränderbarkeit – auf das Beziehungsgefüge der menschlichen Gesellschaft (nach Joseph Beuys).</p>
                 </div>
-                <div class="feed" id="liveFeed"></div>
-                <div class="terms" id="liveTerms"></div>
-            </article>
+            </div>
         </section>
+
+        <section class="panel-right">
+            <div>
+                <h2 class="section-title">Live-Daten</h2>
+                <div id="dataStream">
+                    <div class="stream-item">
+                        <div class="stream-source"><span>Netzwerk</span><span>Status</span></div>
+                        <div class="stream-text">Verbinde mit Diskurs-Schnittstelle zur Sozialen Plastik...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <script>
-        const fallbackFeed = [
-            {
-                title: 'Soziale Plastik',
-                source: 'Kernbegriff',
-                excerpt: 'Kunst als gesellschaftlich formbare Praxis, die über Material hinaus in Beziehungen und Handlungen greift.'
-            },
-            {
-                title: 'Kunst als Erfahrung',
-                source: 'Dewey / Bertram',
-                excerpt: 'Erfahrung, Wahrnehmung und Handlung werden als zusammenhängender Prozess verstanden.'
-            },
-            {
-                title: 'Menschliche Praxis',
-                source: 'Konzept',
-                excerpt: 'Das Projekt bleibt offen für weitere Begriffe, Fragmente und Verweise.'
-            }
-        ];
+        // Dynamisches Data Fetching (Zieht Begriffssplitter live aus dem Netz)
+        const streamContainer = document.getElementById('dataStream');
 
-        const liveFeed = document.getElementById('liveFeed');
-        const liveTerms = document.getElementById('liveTerms');
-
-        function renderFeed(items) {
-            liveFeed.innerHTML = items.map((item) => `
-                <article class="feed-item">
-                    <header>
-                        <strong>${item.title}</strong>
-                        <span>${item.source}</span>
-                    </header>
-                    <p>${item.excerpt}</p>
-                </article>
-            `).join('');
-
-            const terms = items.flatMap((item) => item.title.split(/\s+/)).slice(0, 10);
-            liveTerms.innerHTML = terms.map((term) => `<span class="term">${term}</span>`).join('');
-        }
-
-        async function fetchFragments(query) {
-            const url = `https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(`Wikipedia status ${response.status}`);
-            }
-
-            const data = await response.json();
-            const results = data?.query?.search ?? [];
-
-            return results.slice(0, 3).map((result) => ({
-                title: result.title,
-                source: 'Wikipedia',
-                excerpt: result.snippet.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"')
-            }));
-        }
-
-        async function loadLiveFeed() {
-            const queries = ['Soziale Plastik', 'Joseph Beuys', 'Bildhauerei'];
-
+        async function fetchDiscourseData() {
             try {
-                const batches = await Promise.all(queries.map((query) => fetchFragments(query)));
-                const items = batches.flat().filter(Boolean);
-
-                if (!items.length) {
-                    throw new Error('empty result');
+                const response = await fetch(`https://de.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=Soziale_Plastik|Joseph_Beuys|Bildhauerei&format=json&origin=*`);
+                const data = await response.json();
+                
+                if (data.query && data.query.pages) {
+                    streamContainer.innerHTML = '';
+                    
+                    Object.values(data.query.pages).forEach(page => {
+                        if (page.extract) {
+                            const fragments = page.extract.split('. ').filter(f => f.trim().length > 20);
+                            fragments.slice(0, 3).forEach(frag => {
+                                const item = document.createElement('div');
+                                item.className = 'stream-item';
+                                item.innerHTML = `
+                                    <div class="stream-source"><span>Wikipedia</span><span>${page.title}</span></div>
+                                    <div class="stream-text">${frag.trim()}.</div>
+                                `;
+                                streamContainer.appendChild(item);
+                            });
+                        }
+                    });
                 }
-
-                renderFeed(items);
             } catch (error) {
-                renderFeed(fallbackFeed);
+                // Kuriertes, textbasiertes Fallback direkt aus deinen PDFs
+                streamContainer.innerHTML = `
+                    <div class="stream-item">
+                        <div class="stream-source"><span>Konzept</span><span>Bildhauerei</span></div>
+                        <div class="stream-text">Wenn Bildhauerei die Gestaltung von Form, Raum und Beziehung ist, dann kann auch ein sozialer Raum eine Form der Bildhauerei sein.</div>
+                    </div>
+                    <div class="stream-item">
+                        <div class="stream-source"><span>Beuys</span><span>Erweiterter Kunstbegriff</span></div>
+                        <div class="stream-text">Die einzig revolutionäre Kraft ist die Kraft der menschlichen Kreativität. Die einzig revolutionäre Kraft ist die Kunst.</div>
+                    </div>
+                `;
             }
         }
 
-        const canvas = document.getElementById('backgroundCanvas');
-        const context = canvas.getContext('2d');
-        let width = 0;
-        let height = 0;
-        let nodes = [];
-        let pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
+        // Raum-Kinetik (Strikte Trennung: Keine Naturmetaphern, keine visuellen Verbindungslinien)
+        const canvas = document.getElementById('motionCanvas');
+        const ctx = canvas.getContext('2d');
 
-        function resizeCanvas() {
-            width = canvas.width = window.innerWidth * devicePixelRatio;
-            height = canvas.height = window.innerHeight * devicePixelRatio;
-            canvas.style.width = `${window.innerWidth}px`;
-            canvas.style.height = `${window.innerHeight}px`;
-
-            nodes = Array.from({ length: 34 }, () => ({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                vx: (Math.random() - 0.5) * 0.18,
-                vy: (Math.random() - 0.5) * 0.18,
-                r: 1.2 + Math.random() * 1.8
-            }));
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
         }
+        window.addEventListener('resize', resize);
+        resize();
 
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('mousemove', (event) => {
-            pointer.targetX = event.clientX / window.innerWidth - 0.5;
-            pointer.targetY = event.clientY / window.innerHeight - 0.5;
+        let view = { x: 0, y: 0, targetX: 0, targetY: 0 };
+        window.addEventListener('mousemove', (e) => {
+            view.targetX = (e.clientX - width / 2) / (width / 2);
+            view.targetY = (e.clientY - height / 2) / (height / 2);
         });
 
-        function drawCanvas() {
-            pointer.x += (pointer.targetX - pointer.x) * 0.05;
-            pointer.y += (pointer.targetY - pointer.y) * 0.05;
-
-            context.clearRect(0, 0, width, height);
-            context.save();
-            context.scale(devicePixelRatio, devicePixelRatio);
-
-            for (const node of nodes) {
-                node.x += node.vx + pointer.x * 0.12;
-                node.y += node.vy + pointer.y * 0.12;
-
-                if (node.x < -40) node.x = width / devicePixelRatio + 40;
-                if (node.x > width / devicePixelRatio + 40) node.x = -40;
-                if (node.y < -40) node.y = height / devicePixelRatio + 40;
-                if (node.y > height / devicePixelRatio + 40) node.y = -40;
-
-                context.beginPath();
-                context.fillStyle = 'rgba(255,255,255,0.7)';
-                context.arc(node.x, node.y, node.r, 0, Math.PI * 2);
-                context.fill();
-            }
-
-            context.restore();
-            requestAnimationFrame(drawCanvas);
+        const coordinates = [];
+        for (let i = 0; i < 35; i++) {
+            coordinates.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                speedX: (Math.random() - 0.5) * 0.15,
+                speedY: (Math.random() - 0.5) * 0.15,
+                r: Math.random() * 1 + 0.5
+            });
         }
 
-        resizeCanvas();
-        drawCanvas();
-        loadLiveFeed();
+        function loop() {
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, width, height);
+
+            view.x += (view.targetX - view.x) * 0.05;
+            view.y += (view.targetY - view.y) * 0.05;
+
+            coordinates.forEach(pt => {
+                pt.x += pt.speedX + (view.x * 0.08);
+                pt.y += pt.speedY + (view.y * 0.08);
+
+                if (pt.x < 0 || pt.x > width) pt.speedX *= -1;
+                if (pt.y < 0 || pt.y > height) pt.speedY *= -1;
+
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.fill();
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        fetchDiscourseData();
+        loop();
     </script>
 </body>
 </html>
