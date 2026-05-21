@@ -8,15 +8,17 @@ const PDF_JS_WORKER_URL =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
 const PDF_SOURCES = [
-    './pdf/KUNST.pdf',
-    './pdf/Konzeptpapier.pdf'
+    './pdf/konzeptpapier.pdf',
+    './pdf/kunstraum.pdf'
 ];
 
 const WIKI_TERMS = [
     'Soziale Plastik',
     'Joseph Beuys',
     'Kunst als Erfahrung',
-    'Georg W. Bertram'
+    'Georg W. Bertram',
+    `Kunst`,
+    `Bildhauerei`,
 ];
 
 let fragments = [];
