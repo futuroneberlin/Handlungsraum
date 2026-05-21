@@ -4,8 +4,8 @@
     const canvas = document.getElementById('roomCanvas');
     const context = canvas.getContext('2d', { alpha: false });
     const fontStack = '"Helvetica Neue", Helvetica, Arial, sans-serif';
-    const PDF_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.js';
-    const PDF_JS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js';
+    const PDF_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    const PDF_JS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const PDF_SOURCES = [
         ['pdf/konzeptpapier.pdf'],
         ['pdf/kunstraum.pdf']
