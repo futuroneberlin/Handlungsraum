@@ -1,31 +1,35 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-  <title>Handlungsraum</title>
-
-  <link rel="stylesheet" href="style.css"/>
-
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Handlungsraum als kinetische soziale Plastik mit PDF-Analyse, Live-Daten und relationaler Typografie.">
+  <title>Handlungsraum | Digitale soziale Plastik</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+  <canvas id="roomCanvas" aria-hidden="true"></canvas>
 
-  <canvas id="space"></canvas>
+  <main class="hud" aria-label="Status des Handlungsraums">
+    <section class="identity">
+      <p class="eyebrow">Handlungsraum</p>
+      <h1>Digitale soziale Plastik</h1>
+      <p class="lede">PDF-Texte, Wikipedia-Fragmente und relationale Kräfte werden als permanenter Denkraum in Bewegung gehalten.</p>
+    </section>
 
-  <div id="overlay">
-    <div id="title">
-      HANDLUNGSRAUM
-    </div>
+    <section class="signals" aria-live="polite">
+      <p class="status" id="roomStatus">Initialisiere Raum und PDF-Analyse …</p>
+      <p class="meta" id="roomMeta">0 Fragmente · 0 Relationen</p>
+    </section>
+  </main>
 
-    <div id="liveFeed"></div>
-  </div>
+  <footer class="legend" aria-hidden="true">
+    <span><i class="swatch theory"></i>Theorie</span>
+    <span><i class="swatch live"></i>Live-Daten</span>
+    <span><i class="swatch line"></i>Relation</span>
+  </footer>
 
-  <script src="script.js"></script>
-
+  <script src="script.js" defer></script>
 </body>
 </html>
 
