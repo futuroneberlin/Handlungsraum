@@ -2,36 +2,363 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>handlungsraum | Endlose Textarchitektur</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Handlungsraum | Soziale Plastik & Virtuelle Räume</title>
+    <!-- Deployed: 2026-05-21 - force Pages rebuild -->
     <style>
+        :root {
+            --bg: #070707;
+            --text: #f2f0ea;
+            --muted: rgba(242, 240, 234, 0.7);
+            --line: rgba(255, 255, 255, 0.12);
+            --accent: #d5b273;
+            --erdung: #e6dfd2;
+            --wasserfall: #9dc8ff;
+            --feuer: #ff9c71;
+            --wirbelwind: #c8c8c8;
+        }
+
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #030303; 
-            color: #ffffff; 
-            font-family: 'Courier New', Courier, monospace;
-            user-select: none;
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #090909 0%, #0e0e10 100%);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
         }
-        canvas { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100vw; 
-            height: 100vh; 
-            z-index: 1;
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 20px 72px;
         }
-        #ui-layer {
+
+        .header {
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: 2.6rem;
+            letter-spacing: 0.16em;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            color: var(--muted);
+            max-width: 100ch;
+            line-height: 1.8;
+            font-size: 1.05rem;
+        }
+
+        .rooms-grid {
+            display: grid;
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .room {
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            backdrop-filter: blur(16px);
+            padding: 44px;
+            cursor: pointer;
+            transition: all 300ms ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .room::before {
+            content: "";
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10;
-            pointer-events: none;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--room-color);
+            opacity: 0.6;
         }
+
+        .room:hover {
+            border-color: var(--room-color);
+            background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .room-index {
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--room-color);
+            margin-bottom: 12px;
+        }
+
+        .room h2 {
+            margin: 0 0 16px 0;
+            font-size: 1.8rem;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        .room-weather {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--room-color);
+            background: rgba(255,255,255,0.04);
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--room-color);
+            margin-bottom: 20px;
+        }
+
+        .room-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .room-text {
+            color: rgba(242, 240, 234, 0.85);
+            line-height: 1.85;
+            font-size: 1rem;
+        }
+
+        .room-text p {
+            margin: 0 0 16px 0;
+        }
+
+        .room-text strong {
+            color: var(--text);
+        }
+
+        .room-connections {
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .room-connections h4 {
+            margin: 0 0 12px 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--room-color);
+        }
+
+        .room-connections ul {
+            margin: 0;
+            padding-left: 16px;
+            list-style: none;
+        }
+
+        .room-connections li {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: var(--muted);
+            position: relative;
+            padding-left: 12px;
+        }
+
+        .room-connections li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--room-color);
+        }
+
+        .room[data-weather="erdung"] { --room-color: var(--erdung); }
+        .room[data-weather="wasserfall"] { --room-color: var(--wasserfall); }
+        .room[data-weather="feuer"] { --room-color: var(--feuer); }
+        .room[data-weather="wirbelwind"] { --room-color: var(--wirbelwind); }
+
+        .navigation {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid var(--line);
+        }
+
+        .nav-button {
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 200ms ease;
+            text-align: center;
+        }
+
+        .nav-button:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: var(--accent);
+        }
+
+        .nav-button.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .footer-note {
+            margin-top: 60px;
+            padding: 24px;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: rgba(255,255,255,0.02);
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        @media (max-width: 980px) {
+            .room-content {
+                grid-template-columns: 1fr;
+            }
+            .room {
+                padding: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>Handlungsraum</h1>
+            <p>Virtuelle Räume entstehen nicht durch Worte allein, sondern durch die <strong>Überschneidungen</strong> von Konzepten, Praktiken und Inhalten. Diese Seite verwebt die Essenz aus den Konzeptpapieren: Soziale Plastik, partizipatives Denken und künstlerische Praxis. Jeder Raum ist eine Dimension des Handlungsraums; jede Verbindung öffnet neue Perspektiven.</p>
+        </header>
+
+        <section class="rooms-grid" id="roomsContainer"></section>
+
+        <div class="footer-note">
+            <strong>Die vier Wetterbewegungen als Design-Raum:</strong><br>
+            Die Naturbewegungen (Erdung, Wasserfall, Feuer, Wirbelwind) strukturieren deine Leseerfahrung. Sie sind nicht der Inhalt, sondern dein Navigations-Kompass durch die realen konzeptuellen Räume. Scrolle, tauche ein, folge den Verbindungen.
+        </div>
+    </main>
+
+    <script>
+        // Echte Raumkonzepte basierend auf PDF-Inhalten
+        const rooms = [
+            {
+                id: 1,
+                title: "Soziale Plastik",
+                weather: "erdung",
+                subtitle: "Der Raum als formbare Gestalt",
+                content: `                    <p><strong>These:</strong> Wenn Bildhauerei die Gestaltung von Form, Raum und Beziehung ist, dann kann auch ein sozialer Raum eine Form der Bildhauerei sein.</p>
+                    <p>Dieser Raum entsteht nicht durch Material, sondern durch <strong>menschliche Handlung und Beziehung</strong>. Der Künstler arbeitet nicht am Stein, sondern am sozialen Gefüge. Jede Interaktion, jeder Dialog, jede gemeinsame Entscheidung ist ein Schlag des Meißels in den Raum.</p>
+                    <p>Die Flüchtlingsunterkunft wird zur Galerieperformance. Das offene Atelier wird zur künstlerischen Intervention. Form entsteht durch Entscheidungen, Form verändert sich durch Handlung, Form entsteht im Prozess selbst.</p>
+                `,
+                connections: {
+                    title: "Verbindungen",
+                    items: [
+                        "Partizipative Prozesse (Konzeptpapier)",
+                        "Körper, Handlung, Zeit, Interaktion (KUNST)",
+                        "Sozialer Raum = Bildhauerei (KUNST)",
+                        "Offenes Atelier als praktische Form (beide)"
+                    ]
+                }
+            },
+            {
+                id: 2,
+                title: "Prozess vor Resultat",
+                weather: "wasserfall",
+                subtitle: "Der Wert liegt in der Bewegung, nicht im Ziel",
+                content: `                    <p><strong>Kerngedanke:</strong> Der Wert entsteht nicht erst im Ergebnis, sondern im Prozess selbst – im gemeinsamen Handeln, im Experiment, im Dialog.</p>
+                    <p>Dies ist das Gegenprinzip zu industrialisierten Standards. Sobald Kunst zweckdienlich wird, verliert sie ihre <strong>ontologische Integrität</strong>. Der sichere Experimentierraum (50% Bedarf) ist ein Raum, in dem Fragen offen bleiben dürfen, in dem Fehler nicht bestraft, sondern erforscht werden.</p>
+                    <p>Resonanz statt Ressource: Emotionale und intellektuelle Resonanz (50%) wiegt schwerer als bloßes Material (11,1%). Der Prozess ist das Kunstwerk.</p>
+                `,
+                connections: {
+                    title: "Verbindungen",
+                    items: [
+                        "Sicherer Experimentierraum (Konzeptpapier, 50%)",
+                        "Resonanz statt Ressource (Konzeptpapier, 50%)",
+                        "Form entsteht im Prozess (KUNST)",
+                        "Keine festgelegten Ergebnisse (offenes Atelier)"
+                    ]
+                }
+            },
+            {
+                id: 3,
+                title: "Transformation & Handlung",
+                weather: "feuer",
+                subtitle: "Kunst als Werkzeug für soziale Veränderung",
+                content: `                    <p><strong>Die künstlerische Praxis als gesellschaftliche Kraft:</strong> Bildende Kunst ist nicht Schmuck, sondern Beherrschung der ästhetischen Praxis als Werkzeug für soziale Transformation.</p>
+                    <p>Der Handlungsraum öffnet sich durch <strong>Körper, Handlung, Zeit, Interaktion</strong> – die vier bildhauerischen Eigenschaften in sozialen Kontexten. Migration ist gesellschaftlich stigmatisiert und verwaltet; das offene Atelier wird zur bewussten schöpferischen Tätigkeit der Destigmatisierung.</p>
+                    <p>Ergotherapie, Vereinsarbeit, Kunstpraxis: Sie konvergieren im Ziel der Förderung individueller <strong>Handlungsfähigkeit im sozialen Kontext</strong>. Kunst ist notwendige soziale Infrastruktur, nicht Luxusgut.</p>
+                `,
+                connections: {
+                    title: "Verbindungen",
+                    items: [
+                        "Ästhetische Praxis als Transformation (Konzeptpapier)",
+                        "Kunst ist notwendige Infrastruktur (Konzeptpapier)",
+                        "Körper, Handlung, Zeit, Interaktion (KUNST)",
+                        "Flüchtlingsunterkunft als Ausgangslage (beide)"
+                    ]
+                }
+            },
+            {
+                id: 4,
+                title: "Ursprüngliche Kraft & Ambiguität",
+                weather: "wirbelwind",
+                subtitle: "Der Raum für Fragen, nicht für Antworten",
+                content: `                    <p><strong>Potenzial:</strong> Die Unterscheidung zwischen „Kraft" (intrinsisch) und „Vermögen" (sozial geformt). Kunst muss ein Raum der ursprünglichen Kraft bleiben – fernab von Industriestandards und normativen Bewertungskriterien.</p>
+                    <p>Die These bleibt offen: <strong>Wer entscheidet, wann eine Handlung Kunst ist?</strong> Nicht das Ergebnis, nicht die Kategorie, sondern die Resonanz – die emotionale und intellektuelle Antwort des Raums. Zugehörigkeit entsteht durch Raum für Ambiguität.</p>
+                    <p>44,4% der künstlerischen Akteur:innen suchen eine klare Identität und Gemeinschaft im künstlerischen Prozess. Diese wird durch <strong>Offenheit, Interpretation und Inspiration</strong> gefunden – nicht durch Vorschriften.</p>
+                `,
+                connections: {
+                    title: "Verbindungen",
+                    items: [
+                        "Raum für ursprüngliche Kraft (Konzeptpapier)",
+                        "Raum für Ambiguität (Konzeptpapier)",
+                        "Zugehörigkeit durch Resonanz (beide)",
+                        "Interpretation und Inspiration (KUNST)"
+                    ]
+                }
+            },
+            {
+                id: 5,
+                title: "Die Praktische Manifestation",
+                weather: "erdung",
+                subtitle: "Offenes Atelier: Raum und Realität",
+                content: `                    <p><strong>Concrete Case:</strong> Das Offene Atelier in der Flüchtlingsunterkunft.</p>
+                    <p>Ausgangssituation: Arbeit in der Kinderbetreuung. Offenes Atelier mit Kindern. Freiwillige Teilnahme. Kein festgelegtes Ergebnis. Der Kontext: Flüchtlingsunterkünfte sind stark klassifizierte Räume; Migration ist gesellschaftlich stigmatisiert und verwaltet.</p>
+                    <p>Hier verwandelt sich Theorie in Handlung. Die Plastik wird sozial. Die Transformation wird konkret. Das Atelier wird zum <strong>erfahrungsbildenden Handlungsraum</strong> zur Stärkung der psychischen Integrität – für Kinder, für Erwachsene, für den Raum selbst.</p>
+                `,
+                connections: {
+                    title: "Verbindungen",
+                    items: [
+                        "Partizipative Praxis (Konzeptpapier)",
+                        "Systemlogik: Kunst → Diskurs; Pädagogik → Lernen (KUNST)",
+                        "Erfahrungsbildender Handlungsraum (Konzeptpapier)",
+                        "Raum als Kunstwerk (beide)"
+                    ]
+                }
+            }
+        ];
+
+        // Render Räume
+        const container = document.getElementById('roomsContainer');
+        rooms.forEach(room => {
+            const roomEl = document.createElement('div');
+            roomEl.className = 'room';
+            roomEl.setAttribute('data-weather', room.weather);
+            roomEl.innerHTML = `                <div class="room-index">RAUM ${room.id} / ${rooms.length}</div>                <h2>${room.title}</h2>                <span class="room-weather">${room.weather}</span>                <div class="room-content">                    <div class="room-text">${room.content}</div>                    <div class="room-connections">                        <h4>${room.connections.title}</h4>                        <ul>                            ${room.connections.items.map(item => `<li>${item}</li>`).join('')}                        </ul>                    </div>                </div>            `;
+            container.appendChild(roomEl);
+        });
+    </script>
+</body>
+</html>
         .header h1 { 
             font-size: 20px; 
             font-weight: 300; 
