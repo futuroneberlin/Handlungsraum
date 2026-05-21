@@ -342,16 +342,48 @@ requestAnimationFrame(render);
 
 async function boot(){
 
+try{
+
 await initPDFs();
 
+}catch(err){
+
+console.log(err);
+
+}
+
+try{
+
 await fetchLiveData();
+
+}catch(err){
+
+console.log(err);
+
+}
+
+/* FALLBACK */
+
+if(fragments.length === 0){
+
+fragments.push({
+
+text:"HANDLUNGSRAUM AKTIV",
+
+x:window.innerWidth * 0.5,
+y:window.innerHeight * 0.5,
+
+vx:0,
+vy:0,
+
+type:"live"
+
+});
+
+}
 
 render();
 
 }
-
-
-
-
 
 boot();
