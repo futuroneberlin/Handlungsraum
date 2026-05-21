@@ -84,17 +84,7 @@
         const remainingSlots = Math.max(0, MAX_FRAGMENT_COUNT - fragments.length);
         if (!remainingSlots) return;
 
-        const existing = new Set(fragments.map((f) => (f.text || '').toLowerCase().trim()));
-        const filtered = [];
-        for (const nf of nextFragments) {
-            const key = (nf.text || '').toLowerCase().trim();
-            if (existing.has(key)) continue;
-            existing.add(key);
-            filtered.push(nf);
-            if (filtered.length >= remainingSlots) break;
-        }
-
-        fragments.push(...filtered.slice(0, remainingSlots));
+        fragments.push(...nextFragments.slice(0, remainingSlots));
     }
 
     function ensureMinimumFragments() {
