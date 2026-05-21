@@ -9,7 +9,7 @@
     --concrete: rgba(255, 255, 255, 0.024);
     --asphalt: rgba(255, 255, 255, 0.012);
     --shadow: rgba(0, 0, 0, 0.72);
-    --font: "Helvetica Neue Condensed", "Arial Narrow", "Nimbus Sans Narrow", "Liberation Sans Narrow", Helvetica, Arial, sans-serif;
+    --font: "grotesk", "IBM mono", "monospace",
 }
 
 * {
