@@ -36,23 +36,7 @@
         { text: 'ruhige Drift statt Leere', seed: 35.2 }
     ];
 
-    const fragments = [
-        { text: 'Handlungsraum', seed: 1.1 },
-        { text: 'soziale plastik', seed: 2.3 },
-        { text: 'wasser', seed: 3.7 },
-        { text: 'luft', seed: 4.9 },
-        { text: 'feuer', seed: 6.1 },
-        { text: 'erde', seed: 7.4 },
-        { text: 'raum bleibt offen', seed: 8.8 },
-        { text: 'langsame drift', seed: 10.2 }
-    ].map((fragment, index) => ({
-        ...fragment,
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        phase: index * 0.9
-    }));
+    const fragments = [];
 
     const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
     const state = {
@@ -217,18 +201,8 @@
     }
 
     function ensureMinimumFragments() {
-        if (fragments.length >= MIN_FRAGMENT_COUNT) {
-            return;
-        }
-
-        const needed = MIN_FRAGMENT_COUNT - fragments.length;
-        const fallbackFragments = ROOM_FALLBACKS.map((item) => ({
-            text: item.text,
-            seed: item.seed,
-            phase: item.seed * 0.07
-        })).slice(0, needed);
-
-        appendFragments(fallbackFragments);
+        // Kein Ersatz mehr: echte PDF-Fragmente sollen den Inhalt bestimmen.
+        return;
     }
 
     function hashToSeed(value) {
@@ -287,7 +261,7 @@
 
                 if (rawText.trim()) {
                     const pdfFragments = splitIntoFragments(rawText, 'pdf');
-                    console.log('[PDF] fragments:prepared', pdfFragments.length, pdfFragments);
+                    console.log('[PDF] fragments:prepared', pdfFragments.length);
                     appendFragments(pdfFragments);
                     console.log('[PDF] fragments:length-after-append', fragments.length);
                 } else {
@@ -560,7 +534,6 @@
     }, { passive: true });
 
     resize();
-    initialize();
     console.log('[PDF] chain:before-extract', { fragmentsLength: fragments.length });
     extractPdfFragments().then(() => {
         console.log('[PDF] chain:after-extract', { fragmentsLength: fragments.length });
@@ -570,6 +543,6 @@
         ensureMinimumFragments();
         initialize();
         console.log('[PDF] chain:completed', { fragmentsLength: fragments.length });
+        requestAnimationFrame(render);
     });
-    requestAnimationFrame(render);
 })();
