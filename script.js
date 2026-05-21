@@ -7,9 +7,11 @@
     const PDF_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.js';
     const PDF_JS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js';
     const PDF_SOURCES = [
-        ['pdf/konzeptpapier.pdf', 'konzeptpapier.pdf'],
-        ['kunst.pdf', 'pdf/kunst.pdf']
+        ['pdf/konzeptpapier.pdf'],
+        ['pdf/kunstraum.pdf']
     ];
+    const BUILD_INTERVAL = 1000; // ms between brick placements
+    let pdfBuildCounter = 0;
     const LIVE_QUERIES = ['Soziale Plastik', 'Social Sculpture'];
     const LIVE_FALLBACKS = [
         {
@@ -89,6 +91,30 @@
         return text.replace(/\s+/g, ' ').trim();
     }
 
+    function extractKeywordSet(text) {
+        const stopwords = new Set(['und', 'oder', 'der', 'die', 'das', 'ein', 'eine', 'mit', 'für', 'auf', 'im', 'in', 'zu', 'von', 'the', 'and', 'or', 'to', 'of', 'is', 'are']);
+        return new Set(
+            cleanText(text)
+                .toLowerCase()
+                .split(/[^a-z0-9äöüß]+/i)
+                .map((word) => word.trim())
+                .filter((word) => word.length > 3 && !stopwords.has(word))
+        );
+    }
+
+    function hasKeywordOverlap(leftText, rightText) {
+        const leftKeywords = extractKeywordSet(leftText);
+        const rightKeywords = extractKeywordSet(rightText);
+
+        for (const keyword of leftKeywords) {
+            if (rightKeywords.has(keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function splitIntoFragments(text, sourceLabel) {
         const words = cleanText(text).split(' ').filter(Boolean);
         const chunks = [];
@@ -111,7 +137,9 @@
             .map((chunk, index) => ({
                 text: chunk,
                 seed: hashToSeed(`${sourceLabel}-${index}-${chunk}`),
-                phase: index * 0.7
+                phase: index * 0.7,
+                source: sourceLabel === 'pdf' ? 'pdf' : (sourceLabel === 'live' ? 'live' : undefined),
+                buildOrder: sourceLabel === 'pdf' ? (pdfBuildCounter++) : undefined
             }))
             .slice(0, MAX_PDF_FRAGMENTS)
             .filter((fragment) => fragment.text.length > 18);
@@ -172,12 +200,20 @@
 
     function appendFragments(nextFragments) {
         const remainingSlots = Math.max(0, MAX_FRAGMENT_COUNT - fragments.length);
+        if (!remainingSlots) return;
 
-        if (!remainingSlots) {
-            return;
+        // deduplicate by normalized text to avoid repeated Wikipedia snippets
+        const existing = new Set(fragments.map((f) => (f.text || '').toLowerCase().trim()));
+        const filtered = [];
+        for (const nf of nextFragments) {
+            const key = (nf.text || '').toLowerCase().trim();
+            if (existing.has(key)) continue;
+            existing.add(key);
+            filtered.push(nf);
+            if (filtered.length >= remainingSlots) break;
         }
 
-        fragments.push(...nextFragments.slice(0, remainingSlots));
+        fragments.push(...filtered.slice(0, remainingSlots));
     }
 
     function ensureMinimumFragments() {
@@ -206,36 +242,60 @@
 
     async function extractPdfFragments() {
         try {
+            console.log('[PDF] extractPdfFragments:start');
             const pdfjsLib = await ensurePdfJs();
+            console.log('[PDF] pdfjsLib:ready', Boolean(pdfjsLib));
 
             for (const sources of PDF_SOURCES) {
-                let extractedText = '';
+                console.log('[PDF] sources:start', sources);
+                const pageTexts = [];
 
                 for (const pdfPath of sources) {
                     try {
+                        console.log('[PDF] loader:before', pdfPath);
                         const loadingTask = pdfjsLib.getDocument({ url: pdfPath, useWorkerFetch: false });
                         const pdf = await loadingTask.promise;
-                        const pageCount = Math.min(pdf.numPages, 6);
+                        const pageCount = Number(pdf?.numPages) || 0;
+                        console.log('[PDF] loaded', pdfPath, { numPages: pdf.numPages, pageCount });
+
+                        if (!pageCount) {
+                            console.warn('[PDF] no-pages', pdfPath);
+                            continue;
+                        }
 
                         for (let pageIndex = 1; pageIndex <= pageCount; pageIndex += 1) {
-                            const page = await pdf.getPage(pageIndex);
-                            const content = await page.getTextContent();
-                            const pageText = content.items.map((item) => item.str).join(' ');
-                            extractedText += ` ${pageText}`;
+                            try {
+                                const page = await pdf.getPage(pageIndex);
+                                const content = await page.getTextContent();
+                                const pageText = content.items.map((item) => item.str).join(' ');
+                                pageTexts.push(pageText);
+                                console.log('[PDF] page:text', pdfPath, { pageIndex, pageTextLength: pageText.length, collectedPages: pageTexts.length, pageText });
+                            } catch (pageError) {
+                                console.error('[PDF] page/error', pdfPath, { pageIndex, pageError });
+                            }
                         }
 
                         break;
                     } catch (error) {
-                        extractedText = '';
+                        console.error('[PDF] load/error', pdfPath, error);
                     }
                 }
 
-                if (extractedText.trim()) {
-                    const pdfFragments = splitIntoFragments(extractedText, 'pdf');
+                const rawText = pageTexts.join(' ');
+
+                console.log('[PDF] rawText', rawText);
+
+                if (rawText.trim()) {
+                    const pdfFragments = splitIntoFragments(rawText, 'pdf');
+                    console.log('[PDF] fragments:prepared', pdfFragments.length, pdfFragments);
                     appendFragments(pdfFragments);
+                    console.log('[PDF] fragments:length-after-append', fragments.length);
+                } else {
+                    console.log('[PDF] no-text-for-source-group', sources);
                 }
             }
         } catch (error) {
+            console.error('[PDF] extractPdfFragments:outer-error', error);
             // Fallback: vorhandene Raumfragmente bleiben sichtbar.
         }
     }
@@ -257,12 +317,28 @@
     }
 
     function initialize() {
-        for (const fragment of fragments) {
-            fragment.x = seedToValue(fragment.seed, 1) * state.width;
-            fragment.y = seedToValue(fragment.seed, 2) * state.height;
+        const cols = Math.max(3, Math.ceil(Math.sqrt(fragments.length)));
+        const rows = Math.max(2, Math.ceil(fragments.length / cols));
+        const cellW = state.width / cols;
+        const cellH = state.height / rows;
+
+        fragments.forEach((fragment, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            fragment.gridIndex = index;
+            fragment.gridX = col;
+            fragment.gridY = row;
+            fragment.baseX = (col + 0.5) * cellW;
+            fragment.baseY = (row + 0.5) * cellH;
+            fragment.offsetX = 0;
+            fragment.offsetY = 0;
+            fragment.x = fragment.baseX;
+            fragment.y = fragment.baseY;
             fragment.vx = (seedToValue(fragment.seed, 3) - 0.5) * 0.10;
             fragment.vy = (seedToValue(fragment.seed, 4) - 0.5) * 0.08;
-        }
+        });
+        // mark build start time for brick-by-brick reveal
+        state.buildStart = performance.now();
     }
 
     function wrap(value, limit) {
@@ -299,51 +375,28 @@
     }
 
     function applyMotion(fragment, time) {
-        const lowerText = fragment.text.toLowerCase();
-        const isWater = lowerText.includes('wasser') || lowerText.includes('fluss') || lowerText.includes('strom') || lowerText.includes('drift');
-        const isAir = lowerText.includes('luft') || lowerText.includes('atem') || lowerText.includes('sprache') || lowerText.includes('leicht');
-        const isFire = lowerText.includes('feuer') || lowerText.includes('glut') || lowerText.includes('funken') || lowerText.includes('energie');
-        const isEarth = lowerText.includes('erde') || lowerText.includes('boden') || lowerText.includes('material') || lowerText.includes('arbeit');
         const isLive = fragment.source === 'live';
 
-        const centerWeight = isLive ? 0.00000024 : 0.00000042;
-        const pointerWeight = isLive ? 0.00000008 : 0.00000012;
-        const centerPullX = (state.width * 0.5 - fragment.x) * centerWeight;
-        const centerPullY = (state.height * 0.5 - fragment.y) * centerWeight;
-        const pointerPullX = (pointer.x * state.width - fragment.x) * pointerWeight;
-        const pointerPullY = (pointer.y * state.height - fragment.y) * pointerWeight;
-
-        let nextVx = fragment.vx;
-        let nextVy = fragment.vy;
-
-        if (isWater) {
-            const horizontalDrift = Math.sin(time * 0.00005 + fragment.phase) * (isLive ? 0.008 : 0.014);
-            nextVx = (nextVx * 0.996) + horizontalDrift + centerPullX + pointerPullX;
-            nextVy = (nextVy * 0.994) + centerPullY + pointerPullY;
-        } else if (isAir) {
-            const verticalOscillation = Math.sin(time * 0.000045 + fragment.phase) * (isLive ? 0.007 : 0.011);
-            nextVx = (nextVx * 0.995) + centerPullX + pointerPullX;
-            nextVy = (nextVy * 0.997) + verticalOscillation + centerPullY + pointerPullY;
-        } else if (isFire) {
-            const impulsePhase = Math.floor(time * 0.0008 + fragment.phase * 1.3) % 9;
-            const impulse = impulsePhase === 0 ? (isLive ? 0.006 : 0.012) : 0;
-            const impulseX = (fragment.phase % 2 === 0 ? 1 : -1) * impulse;
-            const impulseY = (fragment.phase % 3 === 0 ? -1 : 1) * impulse * 0.7;
-            nextVx = (nextVx * 0.989) + impulseX + centerPullX + pointerPullX;
-            nextVy = (nextVy * 0.989) + impulseY + centerPullY + pointerPullY;
-        } else if (isEarth) {
-            nextVx = (nextVx * (isLive ? 0.993 : 0.989)) + centerPullX + pointerPullX;
-            nextVy = (nextVy * (isLive ? 0.995 : 0.992)) + centerPullY + pointerPullY + 0.00002;
-        } else {
-            const ambientDrift = Math.sin(time * 0.00004 + fragment.phase) * (isLive ? 0.004 : 0.006);
-            nextVx = (nextVx * (isLive ? 0.996 : 0.994)) + ambientDrift + centerPullX + pointerPullX;
-            nextVy = (nextVy * (isLive ? 0.996 : 0.994)) + centerPullY + pointerPullY;
+        // Live fragments: slight, minimal perpetual motion (markers)
+        if (isLive) {
+            fragment.offsetX = (fragment.offsetX || 0) * 0.92 + Math.sin(time * 0.0006 + fragment.phase) * 0.02;
+            fragment.offsetY = (fragment.offsetY || 0) * 0.92 + Math.cos(time * 0.00055 + fragment.phase) * 0.02;
+            fragment.x = wrap(fragment.baseX + fragment.offsetX, state.width);
+            fragment.y = wrap(fragment.baseY + fragment.offsetY, state.height);
+            return;
         }
 
-        fragment.vx = nextVx;
-        fragment.vy = nextVy;
-        fragment.x = wrap(fragment.x + fragment.vx, state.width);
-        fragment.y = wrap(fragment.y + fragment.vy, state.height);
+        // PDF / room fragments: motion as offset on a stable base cell
+        const dx = -fragment.offsetX;
+        const dy = -fragment.offsetY;
+
+        // gentle correction towards the grid base and strong damping for stabilization
+        fragment.vx = (fragment.vx || 0) * 0.86 + dx * 0.02;
+        fragment.vy = (fragment.vy || 0) * 0.86 + dy * 0.02;
+        fragment.offsetX += fragment.vx;
+        fragment.offsetY += fragment.vy;
+        fragment.x = wrap(fragment.baseX + fragment.offsetX, state.width);
+        fragment.y = wrap(fragment.baseY + fragment.offsetY, state.height);
     }
 
     function wrapText(text, maxWidth) {
@@ -374,11 +427,21 @@
 
         for (let leftIndex = 0; leftIndex < fragments.length; leftIndex += 1) {
             const left = fragments[leftIndex];
+            const leftIsLive = left.source === 'live';
             let nearest = null;
             let nearestDistanceSquared = maxDistanceSquared;
 
             for (let rightIndex = leftIndex + 1; rightIndex < fragments.length; rightIndex += 1) {
                 const right = fragments[rightIndex];
+                const rightIsLive = right.source === 'live';
+                if (leftIsLive === rightIsLive) {
+                    continue;
+                }
+
+                if (!hasKeywordOverlap(left.text, right.text)) {
+                    continue;
+                }
+
                 const dx = left.x - right.x;
                 const dy = left.y - right.y;
                 const distanceSquared = (dx * dx) + (dy * dy);
@@ -414,21 +477,58 @@
 
     function drawFragment(fragment, time) {
         const isLive = fragment.source === 'live';
-        const alpha = isLive
-            ? 0.42 + Math.sin(time * 0.0005 + fragment.phase) * 0.05
-            : 0.55 + Math.sin(time * 0.0006 + fragment.phase) * 0.08;
-        const size = isLive
-            ? 16 + Math.sin(fragment.phase + time * 0.00035) * 1.1
-            : 18 + Math.sin(fragment.phase + time * 0.0004) * 1.5;
-        const lineHeight = Math.max(26, size * 1.6);
-        const maxWidth = Math.min(320, Math.max(180, state.width * 0.26));
+
+        if (isLive) {
+            // Only draw live (Wikipedia) markers when they share keywords with a non-live fragment
+            let nearest = null;
+            let nearestDist = Infinity;
+            for (const f of fragments) {
+                if (f === fragment || f.source === 'live') continue;
+                if (!hasKeywordOverlap(fragment.text, f.text)) continue;
+                const dx = f.x - fragment.x;
+                const dy = f.y - fragment.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 < nearestDist) { nearestDist = d2; nearest = f; }
+            }
+
+            const threshold = Math.min(state.width, state.height) * 0.18;
+            if (!nearest || Math.sqrt(nearestDist) > threshold) {
+                return; // do not render when not near a brick
+            }
+
+            const size = 16;
+            const lineHeight = Math.max(22, size * 1.4);
+            const maxWidth = Math.min(300, Math.max(160, state.width * 0.2));
+            context.font = `400 ${size}px ${fontStack}`;
+            context.fillStyle = `rgba(214, 201, 74, 0.9)`;
+
+            const lines = wrapText(fragment.text, maxWidth);
+            const totalHeight = (lines.length - 1) * lineHeight;
+            let y = fragment.y - (totalHeight * 0.5);
+            for (const line of lines) {
+                context.fillText(line, fragment.x, y);
+                y += lineHeight;
+            }
+            return;
+        }
+
+        // PDF / room fragments: stable brick typography, minimal motion
+        const size = 18;
+        const lineHeight = Math.max(24, size * 1.4);
+        const maxWidth = Math.min(320, Math.max(160, state.width * 0.22));
         context.font = `400 ${size}px ${fontStack}`;
-        context.fillStyle = isLive ? `rgba(214, 201, 74, ${alpha})` : `rgba(243, 241, 234, ${alpha})`;
+        context.fillStyle = `rgba(243, 241, 234, 0.86)`;
+        // If this fragment is a PDF brick with a build order, only draw it when its time has come
+        if (fragment.source === 'pdf' && typeof fragment.buildOrder === 'number') {
+            const start = state.buildStart || 0;
+            if (time < start + fragment.buildOrder * BUILD_INTERVAL) {
+                return; // not yet placed
+            }
+        }
 
         const lines = wrapText(fragment.text, maxWidth);
         const totalHeight = (lines.length - 1) * lineHeight;
         let y = fragment.y - (totalHeight * 0.5);
-
         for (const line of lines) {
             context.fillText(line, fragment.x, y);
             y += lineHeight;
@@ -461,11 +561,15 @@
 
     resize();
     initialize();
+    console.log('[PDF] chain:before-extract', { fragmentsLength: fragments.length });
     extractPdfFragments().then(() => {
+        console.log('[PDF] chain:after-extract', { fragmentsLength: fragments.length });
         return loadLiveFragments();
     }).then(() => {
+        console.log('[PDF] chain:after-live', { fragmentsLength: fragments.length });
         ensureMinimumFragments();
         initialize();
+        console.log('[PDF] chain:completed', { fragmentsLength: fragments.length });
     });
     requestAnimationFrame(render);
 })();
