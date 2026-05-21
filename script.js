@@ -10,8 +10,6 @@
         ['pdf/konzeptpapier.pdf'],
         ['pdf/kunstraum.pdf']
     ];
-    const BUILD_INTERVAL = 1000; // ms between brick placements
-    let pdfBuildCounter = 0;
     const MAX_FRAGMENT_COUNT = 24;
     const MIN_FRAGMENT_COUNT = 12;
     const MAX_PDF_FRAGMENTS = 8;
@@ -76,9 +74,7 @@
             .map((chunk, index) => ({
                 text: chunk,
                 seed: hashToSeed(`${sourceLabel}-${index}-${chunk}`),
-                phase: index * 0.7,
-                source: sourceLabel === 'pdf' ? 'pdf' : (sourceLabel === 'live' ? 'live' : undefined),
-                buildOrder: sourceLabel === 'pdf' ? (pdfBuildCounter++) : undefined
+                source: sourceLabel === 'pdf' ? 'pdf' : undefined
             }))
             .slice(0, MAX_PDF_FRAGMENTS)
             .filter((fragment) => fragment.text.length > 18);
@@ -185,16 +181,17 @@
         context.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     }
 
-    function seedToValue(seed, offset) {
-        const value = Math.sin(seed * 12.9898 + offset * 78.233) * 43758.5453;
-        return value - Math.floor(value);
-    }
-
     function initialize() {
-        const cols = Math.max(3, Math.ceil(Math.sqrt(fragments.length)));
+        const cols = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(fragments.length))));
         const rows = Math.max(2, Math.ceil(fragments.length / cols));
-        const cellW = state.width / cols;
-        const cellH = state.height / rows;
+        const paddingX = Math.max(48, Math.floor(state.width * 0.08));
+        const paddingY = Math.max(48, Math.floor(state.height * 0.08));
+        const usableWidth = Math.max(1, state.width - (paddingX * 2));
+        const usableHeight = Math.max(1, state.height - (paddingY * 2));
+        const gapX = Math.max(36, Math.floor(usableWidth * 0.045));
+        const gapY = Math.max(44, Math.floor(usableHeight * 0.06));
+        const cellW = Math.max(180, Math.floor((usableWidth - (gapX * (cols - 1))) / cols));
+        const cellH = Math.max(96, Math.floor((usableHeight - (gapY * (rows - 1))) / rows));
 
         fragments.forEach((fragment, index) => {
             const col = index % cols;
@@ -202,14 +199,14 @@
             fragment.gridIndex = index;
             fragment.gridX = col;
             fragment.gridY = row;
-            fragment.baseX = (col + 0.5) * cellW;
-            fragment.baseY = (row + 0.5) * cellH;
+            fragment.cellW = cellW;
+            fragment.cellH = cellH;
+            fragment.baseX = paddingX + (col * (cellW + gapX)) + (cellW * 0.5);
+            fragment.baseY = paddingY + (row * (cellH + gapY)) + (cellH * 0.5);
             fragment.offsetX = 0;
             fragment.offsetY = 0;
             fragment.x = fragment.baseX;
             fragment.y = fragment.baseY;
-            fragment.vx = (seedToValue(fragment.seed, 3) - 0.5) * 0.10;
-            fragment.vy = (seedToValue(fragment.seed, 4) - 0.5) * 0.08;
         });
         // mark build start time for brick-by-brick reveal
         state.buildStart = performance.now();
@@ -233,8 +230,11 @@
     }
 
     function applyMotion(fragment, time) {
-        fragment.x = fragment.baseX;
-        fragment.y = fragment.baseY;
+        const phase = fragment.seed * 6.283185307179586;
+        const microX = Math.sin((time * 0.00012) + phase) * 1.2;
+        const microY = Math.cos((time * 0.00009) + (phase * 1.37)) * 0.75;
+        fragment.x = fragment.baseX + microX;
+        fragment.y = fragment.baseY + microY;
     }
 
     function wrapText(text, maxWidth) {
@@ -261,17 +261,10 @@
 
     function drawFragment(fragment, time) {
         const size = 18;
-        const lineHeight = Math.max(24, size * 1.4);
-        const maxWidth = Math.min(320, Math.max(160, state.width * 0.22));
+        const lineHeight = Math.max(22, size * 1.2);
+        const maxWidth = Math.max(160, Math.min(280, (fragment.cellW || (state.width * 0.22)) * 0.82));
         context.font = `400 ${size}px ${fontStack}`;
         context.fillStyle = `rgba(243, 241, 234, 0.86)`;
-        // If this fragment is a PDF brick with a build order, only draw it when its time has come
-        if (fragment.source === 'pdf' && typeof fragment.buildOrder === 'number') {
-            const start = state.buildStart || 0;
-            if (time < start + fragment.buildOrder * BUILD_INTERVAL) {
-                return; // not yet placed
-            }
-        }
 
         const lines = wrapText(fragment.text, maxWidth);
         const totalHeight = (lines.length - 1) * lineHeight;
