@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>handlungsraum | Digitale Bildhauerei</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; color: #fff; font-family: monospace; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #interface { position: absolute; top: 25px; left: 25px; pointer-events: none; }
+        h1 { font-size: 20px; letter-spacing: 2px; margin: 0 0 5px 0; font-weight: normal; }
+        p { font-size: 11px; color: #888; margin: 0; }
+    </style>
+</head>
+<body>
+    <div id="interface">
+        <h1>HANDLUNGSRAUM</h1>
+        <p>Methode: Naturdynamische Textplastik | Resonanz statt Resultat</p>
+    </div>
+    <canvas id="sculptureCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('sculptureCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Extrahiertes Material aus deinen Konzeptpapieren & Manifesten
+        const conceptData = [
+            { text: "Kunst ist Prozess. Perspektive und Betrachtung. Das Objekt im Raum.", element: "erdung" },
+            { text: "Wenn Bildhauerei die Gestaltung von Form, Raum und Beziehung ist, dann ist ein sozialer Raum Bildhauerei.", element: "erdung" },
+            { text: "Widerstand. Veränderbarkeit. Formbarkeit. Objekt.", element: "wasserfall" },
+            { text: "Körper. Handlung. Zeit. Interaktion.", element: "feuer" },
+            { text: "Resonanz statt Resultat: Erfolg bemisst sich an emotionaler und intellektueller Resonanz.", element: "erdung" },
+            { text: "Institutionalized visibility is a curated past, masquerading as the present.", element: "wirbelwind" },
+            { text: "The process eludes this. It is not visible. It cannot be archived. It remains the future.", element: "feuer" },
+            { text: "FUTUR ONE: Haltung. Resonanz. Kollaborative Praxis.", element: "erdung" },
+            { text: "Offenes Atelier: Ein interdisziplinärer Begegnungsraum, der Selbstwirksamkeit in den Mittelpunkt stellt.", element: "wasserfall" },
+            { text: "Die einzig revolutionäre Kraft ist die Kraft der menschlichen Kreativität. Die Kunst.", element: "wirbelwind" }
+        ];
+
+        class WordSculpture {
+            constructor(text, elementType) {
+                this.text = text;
+                this.element = elementType;
+                this.reset();
+                // Zufällige Initialisierung im Raum
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+            }
+
+            reset() {
+                this.baseX = canvas.width / 2;
+                this.baseY = canvas.height / 2;
+                this.angle = Math.random() * Math.PI * 2;
+                this.radius = Math.random() * 200 + 50;
+                this.speed = Math.random() * 2 + 1;
+                this.alpha = Math.random() * 0.5 + 0.5;
+                this.fontSize = Math.floor(Math.random() * 6) + 11;
+                
+                if (this.element === 'wasserfall') {
+                    this.x = Math.random() * canvas.width;
+                    this.y = -20;
+                    this.speedY = Math.random() * 3 + 2;
+                }
+                if (this.element === 'feuer') {
+                    this.x = canvas.width / 2 + (Math.random() - 0.5) * 300;
+                    this.y = canvas.height + Math.random() * 50;
+                    this.speedY = -(Math.random() * 2 + 15);
+                    this.driftX = (Math.random() - 0.5) * 2;
+                }
+            }
+
+            update(mouseX, mouseY) {
+                // 1. WASSERFALL TEXT (Fällt kontinuierlich herab, prallt subtil ab)
+                if (this.element === 'wasserfall') {
+                    this.y += this.speedY;
+                    // Interaktion mit der Maus (Perspektivischer Windstoß)
+                    let dx = this.x - mouseX;
+                    if (Math.abs(dx) < 100) this.x += dx * 0.05;
+                    if (this.y > canvas.height) this.reset();
+                }
+
+                // 2. FEUER BEWEGUNG (Züngelnde, nach oben schießende, sich auflösende Sätze)
+                else if (this.element === 'feuer') {
+                    this.y += this.speedY;
+                    this.x += this.driftX + (Math.random() - 0.5) * 4;
+                    this.speedY *= 0.98; // Verlangsamt sich beim Aufsteigen
+                    if (this.y < canvas.height * 0.2 || Math.random() < 0.02) this.reset();
+                }
+
+                // 3. WIRBELWIND BUCHSTABEN (Rotieren chaotisch im Orbit)
+                else if (this.element === 'wirbelwind') {
+                    this.angle += 0.02;
+                    this.radius += (Math.random() - 0.5) * 10; // Pulsieren
+                    this.x = mouseX + Math.cos(this.angle) * this.radius;
+                    this.y = mouseY + Math.sin(this.angle) * this.radius;
+                }
+
+                // 4. GEERDETE WORTE (Fixierte Fundamente, bilden das Raumgerüst)
+                else if (this.element === 'erdung') {
+                    // Sanftes, träges Folgen der Perspektive (Parallaxe-Effekt)
+                    this.x += ((this.baseX + (this.baseX - mouseX) * 0.2) - this.x) * 0.1;
+                    this.y += ((this.baseY + (this.baseY - mouseY) * 0.2) - this.y) * 0.1;
+                }
+            }
+
+            draw() {
+                ctx.font = `${this.fontSize}px monospace`;
+                
+                // Farblicht-Codierung basierend auf der Natur-Eigenschaft
+                if (this.element === 'erdung') ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                if (this.element === 'wasserfall') ctx.fillStyle = `rgba(180, 220, 255, ${this.alpha * 0.7})`;
+                if (this.element === 'feuer') ctx.fillStyle = `rgba(255, 120, 50, ${this.alpha * (this.y / canvas.height)})`;
+                if (this.element === 'wirbelwind') ctx.fillStyle = `rgba(200, 200, 200, ${this.alpha})`;
+
+                ctx.fillText(this.text, this.x, this.y);
+            }
+        }
+
+        // Instanziierung
+        const sculptures = conceptData.map(data => new WordSculpture(data.text, data.element));
+
+        // Maus-Interaktion tracken
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // 3D-Zentralperspektive und Verbindungen zeichnen
+        function drawConnections() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+
+            // Verbinde geerdete Begriffsanker miteinander, um ein 3D-Netzwerk/Form zu generieren
+            for (let i = 0; i < sculptures.length; i++) {
+                for (let j = i + 1; j < sculptures.length; j++) {
+                    let dist = Math.hypot(sculptures[i].x - sculptures[j].x, sculptures[i].y - sculptures[j].y);
+                    if (dist < 300) {
+                        ctx.beginPath();
+                        ctx.moveTo(sculptures[i].x, sculptures[i].y);
+                        ctx.lineTo(sculptures[j].x, sculptures[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Loop
+        function loop() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.3)'; // Erzeugt einen bildhauerischen Bewegungs-Schleier (Zeit-Raum)
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawConnections();
+
+            sculptures.forEach(s => {
+                s.update(mouseX, mouseY);
+                s.draw();
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
