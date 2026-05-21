@@ -12,29 +12,9 @@
     ];
     const BUILD_INTERVAL = 1000; // ms between brick placements
     let pdfBuildCounter = 0;
-    const LIVE_QUERIES = ['Soziale Plastik', 'Social Sculpture'];
-    const LIVE_FALLBACKS = [
-        {
-            title: 'Soziale Plastik',
-            text: 'Soziale Plastik beschreibt gesellschaftliche Formung als offenen, sozialen Prozess.',
-            seed: 21.7
-        },
-        {
-            title: 'Social Sculpture',
-            text: 'Social Sculpture versteht künstlerische Praxis als gemeinsames Gestalten des Sozialen.',
-            seed: 23.4
-        }
-    ];
     const MAX_FRAGMENT_COUNT = 24;
     const MIN_FRAGMENT_COUNT = 12;
     const MAX_PDF_FRAGMENTS = 8;
-    const MAX_LIVE_FRAGMENTS = 4;
-    const ROOM_FALLBACKS = [
-        { text: 'Raum bleibt in Bewegung', seed: 31.1 },
-        { text: 'Sprache hält den Raum offen', seed: 32.4 },
-        { text: 'langsame Typografie im Feld', seed: 33.8 },
-        { text: 'ruhige Drift statt Leere', seed: 35.2 }
-    ];
 
     const fragments = [];
 
@@ -129,64 +109,10 @@
             .filter((fragment) => fragment.text.length > 18);
     }
 
-    function createLiveFragment(title, text, seedOffset) {
-        const cleanedText = cleanText(`${title}: ${text}`);
-        return {
-            text: cleanedText,
-            seed: hashToSeed(`live-${title}-${seedOffset}-${cleanedText}`),
-            phase: seedOffset * 0.7,
-            source: 'live'
-        };
-    }
-
-    function mapWikipediaResults(query, results) {
-        return results.slice(0, 2).map((result, index) => {
-            const snippet = cleanText(String(result.snippet || '').replace(/<[^>]*>/g, ' '));
-            const title = cleanText(String(result.title || query));
-            return createLiveFragment(title, snippet || query, index + 1);
-        });
-    }
-
-    async function fetchWikipediaFragments(query) {
-        const url = `https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=2&format=json&origin=*`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`Wikipedia status ${response.status}`);
-        }
-
-        const data = await response.json();
-        const results = data?.query?.search;
-
-        if (!Array.isArray(results) || !results.length) {
-            throw new Error('Wikipedia lieferte keine Treffer');
-        }
-
-        return mapWikipediaResults(query, results);
-    }
-
-    async function loadLiveFragments() {
-        try {
-            const batches = await Promise.all(LIVE_QUERIES.map((query) => fetchWikipediaFragments(query)));
-            const liveFragments = batches.flat().filter(Boolean).slice(0, MAX_LIVE_FRAGMENTS);
-
-            if (liveFragments.length) {
-                appendFragments(liveFragments);
-                return;
-            }
-        } catch (error) {
-            // Fallback unten.
-        }
-
-        const fallbackFragments = LIVE_FALLBACKS.map((item) => createLiveFragment(item.title, item.text, item.seed)).slice(0, MAX_LIVE_FRAGMENTS);
-        appendFragments(fallbackFragments);
-    }
-
     function appendFragments(nextFragments) {
         const remainingSlots = Math.max(0, MAX_FRAGMENT_COUNT - fragments.length);
         if (!remainingSlots) return;
 
-        // deduplicate by normalized text to avoid repeated Wikipedia snippets
         const existing = new Set(fragments.map((f) => (f.text || '').toLowerCase().trim()));
         const filtered = [];
         for (const nf of nextFragments) {
@@ -201,8 +127,7 @@
     }
 
     function ensureMinimumFragments() {
-        // Kein Ersatz mehr: echte PDF-Fragmente sollen den Inhalt bestimmen.
-        return;
+        return fragments.length > 0;
     }
 
     function hashToSeed(value) {
@@ -349,28 +274,8 @@
     }
 
     function applyMotion(fragment, time) {
-        const isLive = fragment.source === 'live';
-
-        // Live fragments: slight, minimal perpetual motion (markers)
-        if (isLive) {
-            fragment.offsetX = (fragment.offsetX || 0) * 0.92 + Math.sin(time * 0.0006 + fragment.phase) * 0.02;
-            fragment.offsetY = (fragment.offsetY || 0) * 0.92 + Math.cos(time * 0.00055 + fragment.phase) * 0.02;
-            fragment.x = wrap(fragment.baseX + fragment.offsetX, state.width);
-            fragment.y = wrap(fragment.baseY + fragment.offsetY, state.height);
-            return;
-        }
-
-        // PDF / room fragments: motion as offset on a stable base cell
-        const dx = -fragment.offsetX;
-        const dy = -fragment.offsetY;
-
-        // gentle correction towards the grid base and strong damping for stabilization
-        fragment.vx = (fragment.vx || 0) * 0.86 + dx * 0.02;
-        fragment.vy = (fragment.vy || 0) * 0.86 + dy * 0.02;
-        fragment.offsetX += fragment.vx;
-        fragment.offsetY += fragment.vy;
-        fragment.x = wrap(fragment.baseX + fragment.offsetX, state.width);
-        fragment.y = wrap(fragment.baseY + fragment.offsetY, state.height);
+        fragment.x = fragment.baseX;
+        fragment.y = fragment.baseY;
     }
 
     function wrapText(text, maxWidth) {
@@ -401,21 +306,11 @@
 
         for (let leftIndex = 0; leftIndex < fragments.length; leftIndex += 1) {
             const left = fragments[leftIndex];
-            const leftIsLive = left.source === 'live';
             let nearest = null;
             let nearestDistanceSquared = maxDistanceSquared;
 
             for (let rightIndex = leftIndex + 1; rightIndex < fragments.length; rightIndex += 1) {
                 const right = fragments[rightIndex];
-                const rightIsLive = right.source === 'live';
-                if (leftIsLive === rightIsLive) {
-                    continue;
-                }
-
-                if (!hasKeywordOverlap(left.text, right.text)) {
-                    continue;
-                }
-
                 const dx = left.x - right.x;
                 const dy = left.y - right.y;
                 const distanceSquared = (dx * dx) + (dy * dy);
@@ -450,43 +345,6 @@
     }
 
     function drawFragment(fragment, time) {
-        const isLive = fragment.source === 'live';
-
-        if (isLive) {
-            // Only draw live (Wikipedia) markers when they share keywords with a non-live fragment
-            let nearest = null;
-            let nearestDist = Infinity;
-            for (const f of fragments) {
-                if (f === fragment || f.source === 'live') continue;
-                if (!hasKeywordOverlap(fragment.text, f.text)) continue;
-                const dx = f.x - fragment.x;
-                const dy = f.y - fragment.y;
-                const d2 = dx * dx + dy * dy;
-                if (d2 < nearestDist) { nearestDist = d2; nearest = f; }
-            }
-
-            const threshold = Math.min(state.width, state.height) * 0.18;
-            if (!nearest || Math.sqrt(nearestDist) > threshold) {
-                return; // do not render when not near a brick
-            }
-
-            const size = 16;
-            const lineHeight = Math.max(22, size * 1.4);
-            const maxWidth = Math.min(300, Math.max(160, state.width * 0.2));
-            context.font = `400 ${size}px ${fontStack}`;
-            context.fillStyle = `rgba(214, 201, 74, 0.9)`;
-
-            const lines = wrapText(fragment.text, maxWidth);
-            const totalHeight = (lines.length - 1) * lineHeight;
-            let y = fragment.y - (totalHeight * 0.5);
-            for (const line of lines) {
-                context.fillText(line, fragment.x, y);
-                y += lineHeight;
-            }
-            return;
-        }
-
-        // PDF / room fragments: stable brick typography, minimal motion
         const size = 18;
         const lineHeight = Math.max(24, size * 1.4);
         const maxWidth = Math.min(320, Math.max(160, state.width * 0.22));
@@ -511,7 +369,6 @@
 
     function render(time) {
         drawBackground(time);
-        drawRelations(time);
 
         for (const fragment of fragments) {
             applyMotion(fragment, time);
@@ -537,10 +394,12 @@
     console.log('[PDF] chain:before-extract', { fragmentsLength: fragments.length });
     extractPdfFragments().then(() => {
         console.log('[PDF] chain:after-extract', { fragmentsLength: fragments.length });
-        return loadLiveFragments();
-    }).then(() => {
-        console.log('[PDF] chain:after-live', { fragmentsLength: fragments.length });
-        ensureMinimumFragments();
+
+        if (!ensureMinimumFragments()) {
+            console.warn('[PDF] no-pdf-fragments-after-load');
+            return;
+        }
+
         initialize();
         console.log('[PDF] chain:completed', { fragmentsLength: fragments.length });
         requestAnimationFrame(render);
