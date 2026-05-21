@@ -18,7 +18,6 @@
 
     const fragments = [];
 
-    const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
     const state = {
         width: 0,
         height: 0,
@@ -53,30 +52,6 @@
 
     function cleanText(text) {
         return text.replace(/\s+/g, ' ').trim();
-    }
-
-    function extractKeywordSet(text) {
-        const stopwords = new Set(['und', 'oder', 'der', 'die', 'das', 'ein', 'eine', 'mit', 'für', 'auf', 'im', 'in', 'zu', 'von', 'the', 'and', 'or', 'to', 'of', 'is', 'are']);
-        return new Set(
-            cleanText(text)
-                .toLowerCase()
-                .split(/[^a-z0-9äöüß]+/i)
-                .map((word) => word.trim())
-                .filter((word) => word.length > 3 && !stopwords.has(word))
-        );
-    }
-
-    function hasKeywordOverlap(leftText, rightText) {
-        const leftKeywords = extractKeywordSet(leftText);
-        const rightKeywords = extractKeywordSet(rightText);
-
-        for (const keyword of leftKeywords) {
-            if (rightKeywords.has(keyword)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     function splitIntoFragments(text, sourceLabel) {
@@ -255,22 +230,6 @@
     function drawBackground(time) {
         context.fillStyle = '#000000';
         context.fillRect(0, 0, state.width, state.height);
-
-        const pulseX = pointer.x * state.width;
-        const pulseY = pointer.y * state.height;
-        const haze = context.createRadialGradient(pulseX, pulseY, 0, pulseX, pulseY, Math.max(state.width, state.height) * 0.45);
-        haze.addColorStop(0, 'rgba(255,255,255,0.02)');
-        haze.addColorStop(1, 'rgba(0,0,0,0)');
-        context.fillStyle = haze;
-        context.fillRect(0, 0, state.width, state.height);
-
-        const grain = 0.004 + Math.sin(time * 0.0002) * 0.0015;
-        context.fillStyle = `rgba(255,255,255,${grain})`;
-        for (let index = 0; index < 12; index += 1) {
-            const x = (index * 137.5 + time * 0.01) % state.width;
-            const y = (index * 83.1 + time * 0.008) % state.height;
-            context.fillRect(x, y, 1, 1);
-        }
     }
 
     function applyMotion(fragment, time) {
@@ -298,50 +257,6 @@
         }
 
         return lines;
-    }
-
-    function drawRelations(time) {
-        const maxDistance = Math.min(state.width, state.height) * 0.22;
-        const maxDistanceSquared = maxDistance * maxDistance;
-
-        for (let leftIndex = 0; leftIndex < fragments.length; leftIndex += 1) {
-            const left = fragments[leftIndex];
-            let nearest = null;
-            let nearestDistanceSquared = maxDistanceSquared;
-
-            for (let rightIndex = leftIndex + 1; rightIndex < fragments.length; rightIndex += 1) {
-                const right = fragments[rightIndex];
-                const dx = left.x - right.x;
-                const dy = left.y - right.y;
-                const distanceSquared = (dx * dx) + (dy * dy);
-
-                if (distanceSquared < nearestDistanceSquared) {
-                    nearest = right;
-                    nearestDistanceSquared = distanceSquared;
-                }
-            }
-
-            if (!nearest) {
-                continue;
-            }
-
-            const distance = Math.sqrt(nearestDistanceSquared);
-            const proximity = 1 - (distance / maxDistance);
-            const pulse = 0.5 + (Math.sin(time * 0.0004 + left.phase + nearest.phase) * 0.5);
-            const alpha = Math.max(0, (0.06 * proximity * pulse));
-
-            if (alpha < 0.008) {
-                continue;
-            }
-
-            context.beginPath();
-            context.moveTo(left.x, left.y);
-            context.lineTo(nearest.x, nearest.y);
-            context.strokeStyle = `rgba(214, 201, 74, ${alpha})`;
-            context.lineWidth = 0.35 + (0.35 * proximity);
-            context.lineCap = 'round';
-            context.stroke();
-        }
     }
 
     function drawFragment(fragment, time) {
@@ -381,13 +296,6 @@
     window.addEventListener('resize', () => {
         resize();
         initialize();
-    }, { passive: true });
-
-    window.addEventListener('pointermove', (event) => {
-        pointer.targetX = event.clientX / Math.max(window.innerWidth, 1);
-        pointer.targetY = event.clientY / Math.max(window.innerHeight, 1);
-        pointer.x += (pointer.targetX - pointer.x) * 0.12;
-        pointer.y += (pointer.targetY - pointer.y) * 0.12;
     }, { passive: true });
 
     resize();
