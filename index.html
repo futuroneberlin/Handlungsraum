@@ -2,472 +2,220 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Handlungsraum | Soziale Plastik & Virtuelle Räume</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diplom: Kunst als menschliche Praxis & Erfahrung</title>
     <style>
-        :root {
-            --bg: #070707;
-            --text: #f2f0ea;
-            --muted: rgba(242, 240, 234, 0.6);
-            --line: rgba(255, 255, 255, 0.08);
-            --accent: #d5b273;
-            --erdung: #ffffff;
-            --wasserfall: #0088ff;
-            --feuer: #ff3300;
-            --wirbelwind: #ff00aa;
-        }
-
-        * { box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-
-        body {
-            margin: 0;
-            background-color: #030303;
-            color: var(--text);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
-            overflow-x: hidden;
-            min-height: 100vh;
-            position: relative;
-        }
-
-        /* Das interaktive Beziehungsnetzwerk liegt permanent dahinter */
-        canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 60px 20px 100px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .header {
-            margin-bottom: 80px;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            font-weight: 300;
-            letter-spacing: 6px;
-            margin: 0 0 15px 0;
-            text-transform: uppercase;
-        }
-
-        .header p {
-            color: var(--muted);
-            max-width: 90ch;
-            line-height: 1.8;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-        }
-
-        .rooms-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 32px;
-            margin-bottom: 60px;
-        }
-
-        .room {
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(135deg, rgba(15, 15, 15, 0.85), rgba(5, 5, 5, 0.95));
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 44px;
-            transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .room::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--room-color);
-            opacity: 0.4;
-            transition: opacity 300ms ease;
-        }
-
-        .room:hover {
-            border-color: var(--room-color);
-            transform: translateY(-2px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-        }
-
-        .room:hover::before {
-            opacity: 1;
-        }
-
-        .room-index {
-            font-size: 11px;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: var(--room-color);
-            margin-bottom: 16px;
-            font-family: monospace;
-        }
-
-        .room h2 {
-            margin: 0 0 8px 0;
-            font-size: 24px;
-            font-weight: 400;
-            letter-spacing: -0.01em;
-        }
-
-        .room-weather {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 999px;
-            border: 1px solid var(--room-color);
-            background: rgba(255, 255, 255, 0.03);
-            font-size: 10px;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--room-color);
-            margin-bottom: 28px;
-            font-family: monospace;
-        }
-
-        .room-content {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 40px;
-            align-items: start;
-        }
-
-        .room-text {
-            color: rgba(242, 240, 234, 0.85);
-            line-height: 1.85;
-            font-size: 14.5px;
-        }
-
-        .room-text p {
-            margin: 0 0 16px 0;
-        }
-
-        .room-text p:last-child {
-            margin: 0;
-        }
-
-        .room-text strong {
-            color: #ffffff;
-            font-weight: 500;
-        }
-
-        .room-connections {
-            padding: 24px;
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.01);
-        }
-
-        .room-connections h4 {
-            margin: 0 0 16px 0;
-            font-size: 11px;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--room-color);
-            font-family: monospace;
-        }
-
-        .room-connections ul {
+        * {
             margin: 0;
             padding: 0;
-            list-style: none;
+            box-sizing: border-box;
         }
-
-        .room-connections li {
-            margin-bottom: 12px;
-            font-size: 13px;
-            color: var(--muted);
-            position: relative;
-            padding-left: 20px;
-            line-height: 1.5;
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0a0a0a;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffffff;
         }
-
-        .room-connections li:last-child {
-            margin-bottom: 0;
-        }
-
-        .room-connections li::before {
-            content: "→";
+        #canvas-container {
             position: absolute;
+            top: 0;
             left: 0;
-            color: var(--room-color);
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
-
-        .room[data-weather="erdung"] { --room-color: var(--erdung); }
-        .room[data-weather="wasserfall"] { --room-color: var(--wasserfall); }
-        .room[data-weather="feuer"] { --room-color: var(--feuer); }
-        .room[data-weather="wirbelwind"] { --room-color: var(--wirbelwind); }
-
-        .ui-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-top: 60px;
-            padding-top: 40px;
-            border-top: 1px solid var(--line);
-            gap: 40px;
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
-
-        .legend {
-            display: flex;
-            gap: 24px;
-            font-size: 10px;
-            letter-spacing: 1px;
+        #overlay-ui {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            z-index: 10;
+            max-width: 400px;
+            pointer-events: none;
+            background: rgba(10, 10, 10, 0.85);
+            padding: 20px;
+            border-left: 3px solid #ff3366;
+        }
+        h1 {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            color: #ff3366;
+        }
+        p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #cccccc;
+            margin-bottom: 15px;
+        }
+        .status-box {
+            font-size: 0.75rem;
+            background: #1a1a1a;
+            padding: 8px;
+            border: 1px solid #333;
+            color: #00ff66;
+        }
+        #interaction-prompt {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
             color: #666;
-            flex-wrap: wrap;
-            font-family: monospace;
+            animation: pulse 2s infinite;
         }
-
-        .legend-item { display: flex; align-items: center; gap: 8px; }
-        .dot { width: 6px; height: 6px; border-radius: 50%; }
-        .dot.erdung { background: var(--erdung); }
-        .dot.wasserfall { background: var(--wasserfall); }
-        .dot.feuer { background: var(--feuer); }
-        .dot.wirbelwind { background: var(--wirbelwind); }
-
-        .footer-note {
-            max-width: 60ch;
-            font-size: 11px;
-            color: #555;
-            line-height: 1.7;
-            letter-spacing: 0.5px;
-        }
-
-        @media (max-width: 880px) {
-            .room-content {
-                grid-template-columns: 1fr;
-                gap: 28px;
-            }
-            .room { padding: 32px; }
-            .ui-footer { flex-direction: column; gap: 24px; }
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
         }
     </style>
 </head>
 <body>
 
-    <canvas id="sculptureCanvas"></canvas>
+    <div id="overlay-ui">
+        <h1>Handlungsraum: Soziale Plastik</h1>
+        <p>Ein virtueller unendlicher Raum basierend auf John Dewey (Kunst als Erfahrung) & Georg Bertram (Kunst als menschliche Praxis).</p>
+        <div class="status-box" id="data-status">Lade Live-Daten zur Sozialen Plastik...</div>
+    </div>
 
-    <main class="container">
-        <header class="header">
-            <h1>Handlungsraum</h1>
-            <p>Virtuelle Räume entstehen nicht durch Worte allein, sondern durch die Überschneidungen von Konzepten, Praktiken und Inhalten. Diese Seite verwebt die Essenz aus den Konzeptpapieren: Soziale Plastik, partizipatives Denken und künstlerische Praxis. Jeder Raum ist eine Dimension des Handlungsraums; jede Verbindung öffnet neue Perspektiven.</p>
-        </header>
+    <div id="interaction-prompt">BEWEGE DIE MAUS, UM DEN RAUM ZU FORMEN</div>
 
-        <section class="rooms-grid">
-            <div class="room" data-weather="erdung">
-                <div class="room-index">RAUM 1 / 5</div>
-                <h2>Soziale Plastik</h2>
-                <span class="room-weather">erdung</span>
-                <div class="room-content">
-                    <div class="room-text">
-                        <p><strong>These:</strong> Wenn Bildhauerei die Gestaltung von Form, Raum und Beziehung ist, dann kann auch ein sozialer Raum eine Form der Bildhauerei sein.</p>
-                        <p>Dieser Raum entsteht nicht durch Material, sondern durch menschliche Handlung und Beziehung. Der Künstler arbeitet nicht am Stein, sondern am sozialen Gefüge. Jede Interaktion, jeder Dialog, jede gemeinsame Entscheidung ist ein Schlag des Meißels in den Raum.</p>
-                        <p>Die Flüchtlingsunterkunft wird zur Galerieperformance. Das offene Atelier wird zur künstlerischen Intervention. Form entsteht durch Entscheidungen, Form verändert sich durch Handlung, Form entsteht im Prozess selbst.</p>
-                    </div>
-                    <div class="room-connections">
-                        <h4>Verbindungen</h4>
-                        <ul>
-                            <li>Partizipative Prozesse (Konzeptpapier)</li>
-                            <li>Körper, Handlung, Zeit, Interaktion (KUNST)</li>
-                            <li>Sozialer Raum = Bildhauerei (KUNST)</li>
-                            <li>Offenes Atelier als praktische Form (beide)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="room" data-weather="wasserfall">
-                <div class="room-index">RAUM 2 / 5</div>
-                <h2>Prozess vor Resultat</h2>
-                <span class="room-weather">wasserfall</span>
-                <div class="room-content">
-                    <div class="room-text">
-                        <p><strong>Kerngedanke:</strong> Der Wert entsteht nicht erst im Ergebnis, sondern im Prozess selbst – im gemeinsamen Handeln, im Experiment, im Dialog.</p>
-                        <p>Dies ist das Gegenprinzip zu industrialisierten Standards. Sobald Kunst zweckdienlich wird, verliert sie ihre ontologische Integrität. Der sichere Experimentierraum (50% Bedarf) ist ein Raum, in dem Fragen offen bleiben dürfen, in dem Fehler nicht bestraft, sondern erforscht werden.</p>
-                        <p>Resonanz statt Ressource: Emotionale und intellektuelle Resonanz (50%) wiegt schwerer als bloßes Material (11,1%). Der Prozess ist das Kunstwerk.</p>
-                    </div>
-                    <div class="room-connections">
-                        <h4>Verbindungen</h4>
-                        <ul>
-                            <li>Sicherer Experimentierraum (Konzeptpapier, 50%)</li>
-                            <li>Resonanz statt Ressource (Konzeptpapier, 50%)</li>
-                            <li>Form entsteht im Prozess (KUNST)</li>
-                            <li>Keine festgelegten Ergebnisse (offenes Atelier)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="room" data-weather="feuer">
-                <div class="room-index">RAUM 3 / 5</div>
-                <h2>Transformation & Handlung</h2>
-                <span class="room-weather">feuer</span>
-                <div class="room-content">
-                    <div class="room-text">
-                        <p><strong>Die künstlerische Praxis als gesellschaftliche Kraft:</strong> Bildende Kunst ist nicht Schmuck, sondern Beherrschung der ästhetischen Praxis als Werkzeug für soziale Transformation.</p>
-                        <p>Der Handlungsraum öffnet sich durch Körper, Handlung, Zeit, Interaktion – die vier bildhauerischen Eigenschaften in sozialen Kontexten. Migration ist gesellschaftlich stigmatisiert und verwaltet; das offene Atelier wird zur bewussten schöpferischen Tätigkeit der Destigmatisierung.</p>
-                        <p>Ergotherapie, Vereinsarbeit, Kunstpraxis: Sie konvergieren im Ziel der Förderung individueller Handlungsfähigkeit im sozialen Kontext. Kunst ist notwendige soziale Infrastruktur, nicht Luxusgut.</p>
-                    </div>
-                    <div class="room-connections">
-                        <h4>Verbindungen</h4>
-                        <ul>
-                            <li>Ästhetische Praxis als Transformation (Konzeptpapier)</li>
-                            <li>Kunst ist notwendige Infrastruktur (Konzeptpapier)</li>
-                            <li>Körper, Handlung, Zeit, Interaktion (KUNST)</li>
-                            <li>Flüchtlingsunterkunft als Ausgangslage (beide)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="room" data-weather="wirbelwind">
-                <div class="room-index">RAUM 4 / 5</div>
-                <h2>Ursprüngliche Kraft & Ambiguität</h2>
-                <span class="room-weather">wirbelwind</span>
-                <div class="room-content">
-                    <div class="room-text">
-                        <p><strong>Potenzial:</strong> Die Unterscheidung zwischen „Kraft" (intrinsisch) und „Vermögen" (sozial geformt). Kunst muss ein Raum der ursprünglichen Kraft bleiben – fernab von Industriestandards und normativen Bewertungskriterien.</p>
-                        <p>Die These bleibt offen: Wer entscheidet, wann eine Handlung Kunst ist? Nicht das Ergebnis, nicht die Kategorie, sondern die Resonanz – die emotionale und intellektuelle Antwort des Raums. Zugehörigkeit entsteht durch Raum für Ambiguität.</p>
-                        <p>44,4% der künstlerischen Akteur:innen suchen eine klare Identität und Gemeinschaft im künstlerischen Prozess. Diese wird durch Offenheit, Interpretation und Inspiration gefunden – nicht durch Vorschriften.</p>
-                    </div>
-                    <div class="room-connections">
-                        <h4>Verbindungen</h4>
-                        <ul>
-                            <li>Raum für ursprüngliche Kraft (Konzeptpapier)</li>
-                            <li>Raum für Ambiguität (Konzeptpapier)</li>
-                            <li>Zugehörigkeit durch Resonanz (beide)</li>
-                            <li>Interpretation und Inspiration (KUNST)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="room" data-weather="erdung">
-                <div class="room-index">RAUM 5 / 5</div>
-                <h2>Die Praktische Manifestation</h2>
-                <span class="room-weather">erdung</span>
-                <div class="room-content">
-                    <div class="room-text">
-                        <p><strong>Concrete Case:</strong> Das Offene Atelier in der Flüchtlingsunterkunft.</p>
-                        <p>Ausgangssituation: Arbeit in der Kinderbetreuung. Offenes Atelier mit Kindern. Freiwillige Teilnahme. Kein festgelegtes Ergebnis. Der Kontext: Flüchtlingsunterkünfte sind stark klassifizierte Räume; Migration ist gesellschaftlich stigmatisiert und verwaltet.</p>
-                        <p>Hier verwandelt sich Theorie in Handlung. Die Plastik wird sozial. Die Transformation wird konkret. Das Atelier wird zum erfahrungsbildenden Handlungsraum zur Stärkung der psychischen Integrität – für Kinder, für Erwachsene, für den Raum selbst.</p>
-                    </div>
-                    <div class="room-connections">
-                        <h4>Verbindungen</h4>
-                        <ul>
-                            <li>Partizipative Praxis (Konzeptpapier)</li>
-                            <li>Systemlogik: Kunst → Diskurs; Pädagogik → Lernen (KUNST)</li>
-                            <li>Erfahrungsbildender Handlungsraum (Konzeptpapier)</li>
-                            <li>Raum als Kunstwerk (beide)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <footer class="ui-footer">
-            <div class="legend">
-                <div class="legend-item"><span class="dot erdung"></span> Erdung (Theorie-Anker)</div>
-                <div class="legend-item"><span class="dot wasserfall"></span> Wasserfall (Träger Fluss)</div>
-                <div class="legend-item"><span class="dot feuer"></span> Feuer (Transformation)</div>
-                <div class="legend-item"><span class="dot wirbelwind"></span> Wirbelwind (Offene Ambiguität)</div>
-            </div>
-            <div class="footer-note">
-                <strong>Die vier Wetterbewegungen als Design-Raum:</strong> Die Naturbewegungen strukturieren deine Leseerfahrung. Das feine Liniennetz im Hintergrund reagiert majestaetisch und unendlich verlangsamt auf deine Mausbewegung, um die ewigen konzeptuellen Verbindungen sichtbar zu machen.
-            </div>
-        </footer>
-    </main>
+    <div id="canvas-container">
+        <canvas id="spaceCanvas"></canvas>
+    </div>
 
     <script>
-        const canvas = document.getElementById('sculptureCanvas');
+        const canvas = document.getElementById('spaceCanvas');
         const ctx = canvas.getContext('2d');
+        const statusBox = document.getElementById('data-status');
 
-        let width, height;
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let mouse = { x: width / 2, y: height / 2, targetX: width / 2, targetY: height / 2 };
+        let concepts = [];
+        let particles = [];
+        const maxParticles = 150;
+
+        // 1. Wikipedia API Integration: Daten zum Thema "Soziale Plastik" ziehen
+        async function fetchSocialPlasticData() {
+            try {
+                statusBox.innerText = "Verbinde mit Wikipedia-Netzwerk...";
+                // Suche nach "Soziale Plastik" via Wikipedia API
+                const response = await fetch(`https://de.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=Soziale_Plastik&format=json&origin=*`);
+                const data = await response.json();
+                
+                const pages = data.query.pages;
+                const pageId = Object.keys(pages)[0];
+                const extract = pages[pageId].extract;
+
+                if (extract) {
+                    // Text in prägnante Fragmente / Sätze zerlegen für die visuelle Matrix
+                    const sentences = extract.split('. ').filter(s => s.trim().length > 10);
+                    
+                    // Standardtheorien aus deinen Dokumenten injizieren
+                    concepts.push("John Dewey: Kunst als Erfahrung");
+                    concepts.push("Georg Bertram: Kunst als menschliche Praxis");
+                    concepts.push("Resonanz statt Resultat");
+                    concepts.push("Bewertungsfreier Experimentierraum");
+
+                    sentences.forEach((sentence) => {
+                        if(concepts.length < 15) {
+                            concepts.push(sentence.substring(0, 80) + "...");
+                        }
+                    });
+
+                    statusBox.innerText = "Daten erfolgreich in Plastik transformiert.";
+                    statusBox.style.color = "#00ff66";
+                    initSpace();
+                }
+            } catch (error) {
+                console.error("Fehler beim Datenabruf:", error);
+                statusBox.innerText = "Offline-Modus: Nutze lokale Konzeptideen.";
+                statusBox.style.color = "#ff3366";
+                // Fallback-Konzepte falls API blockiert ist
+                concepts = [
+                    "Joseph Beuys: Jeder Mensch ist ein Künstler",
+                    "Soziale Plastik: Gestaltung der Gesellschaft",
+                    "John Dewey: Ästhetische Erfahrung im Alltag",
+                    "Georg Bertram: Praxis der Selbstverständigung",
+                    "Form entsteht im kollaborativen Prozess",
+                    "Widerstand, Veränderbarkeit, Formbarkeit"
+                ];
+                initSpace();
+            }
         }
-        window.addEventListener('resize', resize);
-        resize();
 
-        // Extrem gedaempfte Kamerainterpolation (0.015) fuer majestätisch-träge Bewegungen
-        let view = { x: 0, y: 0, targetX: 0, targetY: 0 };
-        window.addEventListener('mousemove', (e) => {
-            view.targetX = (e.clientX - width / 2) / (width / 2);
-            view.targetY = (e.clientY - height / 2) / (height / 2);
-        });
-
-        // Konstruktion virtueller, endloser Verbindungspunkte fuer den Hintergrund
-        const points = [];
-        const colors = ['rgba(255,255,255,0.06)', 'rgba(0,136,255,0.06)', 'rgba(255,51,0,0.06)', 'rgba(255,0,170,0.06)'];
-        
-        for (let i = 0; i < 15; i++) {
-            points.push({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                baseX: Math.random() * 400 - 200,
-                baseY: Math.random() * 400 - 200,
-                z: Math.random() * 150 + 50,
-                angle: Math.random() * Math.PI * 2,
-                speed: 0.0004 + Math.random() * 0.0005, // Extrem verlangsamt
-                color: colors[i % colors.length]
-            });
+        // 2. Initialisierung des mathematischen unendlichen Raums
+        function initSpace() {
+            particles = [];
+            for (let i = 0; i < maxParticles; i++) {
+                particles.push({
+                    x: Math.random() * width - width / 2,
+                    y: Math.random() * height - height / 2,
+                    z: Math.random() * width,
+                    text: concepts[Math.floor(Math.random() * concepts.length)] || "Kollaborative Praxis",
+                    isText: Math.random() > 0.7
+                });
+            }
         }
 
-        function loop(time) {
-            ctx.fillStyle = '#030303';
+        // 3. Animation & Mathematische Transformation des Raums (3D Projektion)
+        function animate() {
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.2)'; // Erzeugt einen fließenden Bewegungsschleier (Erfahrungsprozess)
             ctx.fillRect(0, 0, width, height);
 
-            // Gedaempfter Blickwinkelfluss
-            view.x += (view.targetX - view.x) * 0.015;
-            view.y += (view.targetY - view.y) * 0.015;
+            // Sanfte Mausbewegung (Dämpfung)
+            mouse.x += (mouse.targetX - mouse.x) * 0.05;
+            mouse.y += (mouse.targetY - mouse.y) * 0.05;
 
-            const centerX = width / 2;
-            const centerY = height / 2;
+            // Zentrum berechnen basierend auf Benutzerinteraktion
+            const centerX = width / 2 + (mouse.x - width / 2) * 0.5;
+            const centerY = height / 2 + (mouse.y - height / 2) * 0.5;
 
-            // Update der Punkte im unendlichen, verlangsamten Zyklus
-            points.forEach(p => {
-                p.angle += p.speed;
-                p.currentX = centerX + p.baseX + Math.cos(p.angle) * 60 + (view.x * p.z * -0.8);
-                p.currentY = centerY + p.baseY + Math.sin(p.angle) * 40 + (view.y * p.z * -0.8);
-            });
+            particles.forEach(p => {
+                // Bewege Partikel/Texte auf der Z-Achse auf den Betrachter zu (Unendlicher Vorwärtsstrom)
+                p.z -= 2; 
 
-            // Zeichne die unendlichen, permanenten Netz-Verbindungen im Raum
-            ctx.lineWidth = 1;
-            for (let i = 0; i < points.length; i++) {
-                for (let j = i + 1; j < points.length; j++) {
-                    const dist = Math.hypot(points[i].currentX - points[j].currentX, points[i].currentY - points[j].currentY);
-                    
-                    // Zeichne Linien nur, wenn sie eine harmonische Netzdichte erzeugen
-                    if (dist < 350) {
-                        ctx.strokeStyle = points[i].color;
+                if (p.z <= 0) {
+                    p.z = width; // Setze zurück an den fernen Horizont (Endlosschleife)
+                    p.x = Math.random() * width - width / 2;
+                    p.y = Math.random() * height - height / 2;
+                }
+
+                // 3D zu 2D Projektion
+                const k = 400 / p.z;
+                const px = p.x * k + centerX;
+                const py = p.y * k + centerY;
+
+                if (px >= 0 && px <= width && py >= 0 && py <= height) {
+                    const size = (width - p.z) / width * 3;
+                    const alpha = (width - p.z) / width; // Verblassen im Vordergrund / Hintergrund
+
+                    if (p.isText) {
+                        // Zeichne die Live-Theorie-Fragmente als plastische Elemente im Raum
+                        ctx.font = `${size * 6 + 10}px 'Courier New'`;
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+                        ctx.fillText(p.text, px, py);
+                    } else {
+                        // Verbindungslinien und Datenpunkte (Das Beziehungsnetzwerk der sozialen Plastik)
                         ctx.beginPath();
-                        ctx.moveTo(points[i].currentX, points[i].currentY);
-                        ctx.lineTo(points[j].currentX, points[j].currentY);
-                        ctx.stroke();
+                        ctx.arc(px, py, size * 2, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 51, 102, ${alpha})`;
+                        ctx.fill();
                     }
                 }
-            }
+            });
 
-            requestAnimationFrame(loop);
-        }
-        requestAnimationFrame(loop);
-    </script>
-</body>
-</html>
+            requestAnimationFrame(animate);
 
