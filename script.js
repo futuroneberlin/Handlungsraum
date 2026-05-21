@@ -240,10 +240,13 @@
 
     function applyMotion(fragment, time) {
         const phase = fragment.seed * 6.283185307179586;
-        const microX = Math.sin((time * 0.00003) + phase) * 0.35;
-        const microY = Math.cos((time * 0.000025) + (phase * 1.37)) * 0.22;
-        fragment.x = fragment.baseX + microX;
-        fragment.y = fragment.baseY + microY;
+        const targetOffsetX = Math.sin((time * 0.000028) + phase) * 0.95;
+        const targetOffsetY = Math.cos((time * 0.000023) + (phase * 1.37)) * 0.62;
+
+        fragment.offsetX = (fragment.offsetX || 0) * 0.965 + targetOffsetX * 0.035;
+        fragment.offsetY = (fragment.offsetY || 0) * 0.965 + targetOffsetY * 0.035;
+        fragment.x = fragment.baseX + fragment.offsetX;
+        fragment.y = fragment.baseY + fragment.offsetY;
     }
 
     function wrapText(text, maxWidth) {
