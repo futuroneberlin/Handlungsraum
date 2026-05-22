@@ -28,15 +28,18 @@ let animationTime = 0;
 let layoutTime = 0;
 
 const LAYOUT = {
-    spacingX: 260,
-    spacingY: 88,
-    marginX: 100,
-    marginY: 110,
-    rowDelay: 0.88,
-    cellDelay: 0.045,
-    riseDistance: 34,
-    driftX: 5,
-    driftY: 3
+    spacingX: 280,
+    spacingY: 102,
+    marginX: 96,
+    marginBottom: 112,
+    rowDelay: 1.15,
+    cellDelay: 0.08,
+    riseDistance: 18,
+    driftX: 1.4,
+    driftY: 0.6,
+    fragmentWidth: 330,
+    lineHeight: 24,
+    visibleWikiRelations: 5
 };
 
 function resizeCanvas() {
@@ -86,28 +89,46 @@ function cleanText(text) {
     return text.replace(/\s+/g, ' ').trim();
 }
 
-function splitIntoFragments(text) {
-    const words = cleanText(text)
-        .split(' ')
+function splitIntoSemanticUnits(text) {
+    const normalized = cleanText(text);
+    const sentenceMatches = normalized.match(/[^.!?;:]+[.!?;:]?|[^.!?;:]+/g) || [];
+    const sentences = sentenceMatches
+        .map(sentence => cleanText(sentence))
         .filter(Boolean);
 
-    const chunks = [];
-    let current = [];
+    const units = [];
+    let current = '';
+    const maxLength = 148;
 
-    for (const word of words) {
-        current.push(word);
-
-        if (current.length >= 12) {
-            chunks.push(current.join(' '));
-            current = [];
+    function pushCurrent() {
+        if (current) {
+            units.push(current);
+            current = '';
         }
     }
 
-    if (current.length) {
-        chunks.push(current.join(' '));
+    for (const sentence of sentences) {
+        const pieces = sentence.length > 180
+            ? sentence.split(/,\s+/)
+            : [sentence];
+
+        for (const piece of pieces) {
+            const candidate = current ? `${current} ${piece}` : piece;
+
+            if (candidate.length <= maxLength) {
+                current = candidate;
+            } else {
+                pushCurrent();
+                current = piece;
+            }
+        }
     }
 
-    return chunks;
+    pushCurrent();
+
+    return units
+        .map(unit => unit.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
 }
 
 async function extractPdfFragments(path) {
@@ -131,7 +152,7 @@ async function extractPdfFragments(path) {
             fullText += ` ${pageText}`;
         }
 
-        return splitIntoFragments(fullText);
+        return splitIntoSemanticUnits(fullText);
 
     } catch (error) {
         console.error('PDF Fehler:', path, error);
@@ -151,10 +172,11 @@ async function loadAllPdfFragments() {
                 source,
                 x: 0,
                 y: 0,
-                gridX: 0,
-                gridY: 0,
-                opacity: 0.8,
-                size: 14.5 + (text.length % 7) * 0.55
+                opacity: 0,
+                size: Math.min(19, 15.5 + Math.min(7, text.length / 28)),
+                maxWidth: LAYOUT.fragmentWidth,
+                lineHeight: LAYOUT.lineHeight,
+                lines: []
             });
         }
     }
@@ -191,6 +213,12 @@ async function fetchWikipediaRelations() {
 function layoutFragments() {
     const usableWidth = Math.max(1, canvas.width - LAYOUT.marginX * 2);
     const cols = Math.max(1, Math.floor(usableWidth / LAYOUT.spacingX));
+    const rows = Math.ceil(fragments.length / cols);
+    const baselineY = canvas.height - LAYOUT.marginBottom;
+    const fragmentWidth = Math.min(
+        LAYOUT.fragmentWidth,
+        Math.max(220, Math.floor((usableWidth - 24) / cols))
+    );
 
     fragments.forEach((fragment, index) => {
         const col = index % cols;
@@ -204,17 +232,48 @@ function layoutFragments() {
             LAYOUT.marginX + col * LAYOUT.spacingX;
 
         fragment.targetY =
-            LAYOUT.marginY + row * LAYOUT.spacingY;
+            baselineY - (rows - 1 - row) * LAYOUT.spacingY;
+
+        fragment.maxWidth = fragmentWidth;
+        fragment.lines = wrapFragmentText(fragment.text, fragment.maxWidth, fragment.size);
 
         fragment.revealDelay =
-            row * LAYOUT.rowDelay + col * LAYOUT.cellDelay;
+            (rows - 1 - row) * LAYOUT.rowDelay + col * LAYOUT.cellDelay;
 
         fragment.x = fragment.targetX;
         fragment.y = fragment.targetY + LAYOUT.riseDistance;
         fragment.opacity = 0;
     });
 
-    fragments.sort((left, right) => left.rowOrder - right.rowOrder);
+    fragments.sort((left, right) => left.revealDelay - right.revealDelay);
+}
+
+function wrapFragmentText(text, maxWidth, fontSize) {
+    ctx.save();
+    ctx.font = `${fontSize}px "Arial Narrow", sans-serif`;
+
+    const words = cleanText(text).split(' ').filter(Boolean);
+    const lines = [];
+    let currentLine = '';
+
+    for (const word of words) {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+
+        if (ctx.measureText(candidate).width <= maxWidth || !currentLine) {
+            currentLine = candidate;
+        } else {
+            lines.push(currentLine);
+            currentLine = word;
+        }
+    }
+
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+
+    ctx.restore();
+
+    return lines;
 }
 
 function getFragmentProgress(fragment) {
@@ -365,26 +424,31 @@ function drawFragment(fragment) {
     ctx.save();
 
     ctx.font = `${fragment.size}px "Arial Narrow", sans-serif`;
+    ctx.textBaseline = 'top';
 
     ctx.fillStyle = `rgba(239,235,224,${fragment.opacity})`;
 
-    ctx.fillText(
-        fragment.text,
-        fragment.x,
-        fragment.y
-    );
+    const lines = fragment.lines.length ? fragment.lines : wrapFragmentText(fragment.text, fragment.maxWidth, fragment.size);
+
+    let cursorY = fragment.y;
+
+    for (const line of lines) {
+        ctx.fillText(line, fragment.x, cursorY);
+        cursorY += fragment.lineHeight;
+    }
 
     ctx.restore();
 }
 
 function getRelationAnchor(index) {
     const total = Math.max(1, wikiFragments.length);
-    const baseY = 120 + index * 92;
-    const wave = Math.sin(animationTime * 0.06 + index * 0.9) * 18;
+    const rowStep = 108;
+    const baseY = canvas.height - LAYOUT.marginBottom - index * rowStep;
+    const wave = Math.sin(animationTime * 0.03 + index * 0.9) * 8;
 
     return {
-        x: canvas.width - 188 + Math.cos(animationTime * 0.05 + index) * 10,
-        y: Math.min(canvas.height - 124, baseY + wave),
+        x: canvas.width - 176 + Math.cos(animationTime * 0.02 + index) * 6,
+        y: Math.max(96, baseY + wave),
         phase: index / total
     };
 }
@@ -393,6 +457,7 @@ function drawWikipediaRelations() {
     if (!wikiFragments.length) return;
 
     const visibleCount = Math.min(
+        LAYOUT.visibleWikiRelations,
         wikiFragments.length,
         fragments.length
     );
@@ -401,46 +466,39 @@ function drawWikipediaRelations() {
         const fragment = fragments[i];
         const wiki = wikiFragments[i];
         const anchor = getRelationAnchor(i);
-        const targetX = fragment.x + 20;
-        const targetY = fragment.y - 10;
-        const pulse = 0.18 + Math.sin(animationTime * 0.12 + i * 0.8) * 0.07;
-        const labelY = fragment.y - 16;
+        const targetX = fragment.x - 12;
+        const targetY = fragment.y + fragment.lineHeight * 0.5;
+        const pulse = 0.12 + Math.sin(animationTime * 0.05 + i * 0.8) * 0.05;
 
         ctx.save();
 
         ctx.strokeStyle = `rgba(209,191,88,${pulse})`;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.15;
         ctx.beginPath();
         ctx.moveTo(anchor.x, anchor.y);
-        ctx.lineTo((anchor.x + targetX) * 0.5, anchor.y + Math.sin(animationTime * 0.08 + i) * 6);
+        ctx.lineTo((anchor.x + targetX) * 0.5, anchor.y + Math.sin(animationTime * 0.03 + i) * 4);
         ctx.lineTo(targetX, targetY);
         ctx.stroke();
 
         ctx.fillStyle = `rgba(209,191,88,${pulse + 0.1})`;
         ctx.beginPath();
-        ctx.arc(anchor.x, anchor.y, 2.2, 0, Math.PI * 2);
+        ctx.arc(anchor.x, anchor.y, 1.8, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = `rgba(209,191,88,${pulse + 0.16})`;
+        ctx.fillStyle = `rgba(209,191,88,${pulse + 0.14})`;
         ctx.beginPath();
-        ctx.arc(targetX, targetY, 1.8, 0, Math.PI * 2);
+        ctx.arc(targetX, targetY, 1.4, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.font = '12px "Arial Narrow", sans-serif';
-        ctx.fillStyle = `rgba(209,191,88,${0.55 + pulse})`;
-        ctx.fillText(wiki.term, anchor.x - 132, anchor.y - 6);
+        ctx.font = '11px "Arial Narrow", sans-serif';
+        ctx.fillStyle = `rgba(209,191,88,${0.45 + pulse})`;
+        ctx.fillText(wiki.term, anchor.x - 124, anchor.y - 5);
 
         ctx.strokeStyle = `rgba(209,191,88,${pulse * 0.85})`;
-        ctx.lineWidth = 0.9;
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(targetX - 18, labelY + 1);
-        ctx.lineTo(targetX + 18, labelY + 1);
-        ctx.stroke();
-
-        ctx.strokeStyle = `rgba(209,191,88,${pulse * 0.55})`;
-        ctx.beginPath();
-        ctx.moveTo(targetX - 26, targetY + 13);
-        ctx.lineTo(targetX - 2, targetY + 13);
+        ctx.moveTo(targetX - 16, targetY + 10);
+        ctx.lineTo(targetX + 16, targetY + 10);
         ctx.stroke();
 
         ctx.restore();
@@ -448,8 +506,8 @@ function drawWikipediaRelations() {
 }
 
 function render() {
-    animationTime += 0.01;
-    layoutTime += 0.01;
+    animationTime += 0.005;
+    layoutTime += 0.005;
 
     drawBackground();
 
