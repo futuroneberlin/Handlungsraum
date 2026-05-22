@@ -80,6 +80,9 @@ const MAX_FRAGMENTS = 180;
 const MAX_ACTIVE = 3;
 const MAX_WIKI = 6;
 const ACTIVE_MIN_DISPLAY = 1.6;
+const MIN_QUEUE_OPACITY = 0.06;
+const MIN_ACTIVE_OPACITY = 0.18;
+const MIN_FOUNDATION_OPACITY = 0.26;
 
 function setupUI() {
     const playBtn = document.getElementById('playPause');
@@ -502,38 +505,38 @@ class LayoutEngine {
             return rightWeight - leftWeight || left[0].localeCompare(right[0]);
         });
 
-        const axisXCenters = [0.12, 0.28, 0.44, 0.6, 0.76, 0.92];
-        const axisYSlots = [0.78, 0.64, 0.5, 0.36, 0.22];
-        const axisSpacing = Math.max(110, (canvas.height - LAYOUT.marginBottom * 1.15) / axisYSlots.length);
+        const columnSlots = [0.12, 0.32, 0.52, 0.72, 0.9];
         const seedBase = fragments.length * 31 + canvas.width * 0.001 + canvas.height * 0.002;
         this.seed = seedBase;
+        this.foundationY = canvas.height - 126;
 
         clusterEntries.forEach(([key, clusterFragments], clusterIndex) => {
-            const axisIndex = clusterIndex % axisYSlots.length;
-            const xCenter = LAYOUT.marginX + usableWidth * axisXCenters[clusterIndex % axisXCenters.length];
-            const clusterCenterX = xCenter + (this.seededNoise(seedBase + clusterIndex * 0.7) - 0.5) * usableWidth * 0.02;
-            const clusterCenterY = canvas.height - LAYOUT.marginBottom - axisIndex * axisSpacing;
+            const columnIndex = clusterIndex % columnSlots.length;
+            const rowBand = Math.floor(clusterIndex / columnSlots.length);
+            const xCenter = LAYOUT.marginX + usableWidth * columnSlots[columnIndex];
+            const clusterCenterX = xCenter + (this.seededNoise(seedBase + clusterIndex * 0.7) - 0.5) * usableWidth * 0.015;
+            const clusterCenterY = this.foundationY - rowBand * 58 - (this.seededNoise(seedBase + clusterIndex * 0.4) - 0.5) * 18;
 
             clusterFragments.forEach((fragment, index) => {
                 fragment.clusterIndex = clusterIndex;
                 fragment.clusterOrder = index;
                 fragment.clusterSize = clusterFragments.length;
-                fragment.baseScale = Math.min(1.08, Math.max(0.9, 0.96 + clusterFragments.length * 0.01 - index * 0.004));
-                fragment.revealDelay = clusterIndex * 0.42 + index * 0.1;
-                fragment.targetX = Math.min(
-                    canvas.width - LAYOUT.marginX - fragment.maxWidth,
-                    Math.max(LAYOUT.marginX, clusterCenterX + (index - (clusterFragments.length - 1) / 2) * 14 + (this.seededNoise(seedBase + clusterIndex * 3 + index) - 0.5) * 18)
-                );
-                fragment.targetY = Math.max(78, clusterCenterY + ((index % 2 === 0 ? -1 : 1) * Math.min(14, 5 + index * 1.2)));
+                fragment.baseScale = Math.min(1.04, Math.max(0.9, 0.95 + clusterFragments.length * 0.008 - index * 0.003));
+                fragment.revealDelay = clusterIndex * 0.55 + index * 0.18;
+                fragment.clusterAnchorX = Math.min(canvas.width - LAYOUT.marginX - fragment.maxWidth, Math.max(LAYOUT.marginX, clusterCenterX));
+                fragment.clusterAnchorY = Math.max(88, clusterCenterY);
+                fragment.targetX = fragment.clusterAnchorX;
+                fragment.targetY = fragment.clusterAnchorY + index * 18;
                 fragment.x = fragment.targetX;
                 fragment.y = fragment.targetY + LAYOUT.riseDistance;
-                fragment.opacity = 0;
-                fragment.scale = 0.9;
+                fragment.opacity = MIN_QUEUE_OPACITY;
+                fragment.scale = 0.92;
                 fragment.state = FRAGMENT_STATE.QUEUED;
+                fragment.renderLineHeight = LAYOUT.lineHeight;
             });
         });
 
-        this.drawOrder = fragments.slice().sort((a, b) => a.targetY - b.targetY || a.targetX - b.targetX || a.revealDelay - b.revealDelay);
+        this.drawOrder = fragments.slice().sort((a, b) => a.clusterAnchorY - b.clusterAnchorY || a.clusterAnchorX - b.clusterAnchorX || a.targetY - b.targetY || a.revealDelay - b.revealDelay);
         this.queueOrder = fragments.slice().sort((a, b) => a.revealDelay - b.revealDelay || a.clusterIndex - b.clusterIndex || a.clusterOrder - b.clusterOrder);
         this.relationPairs = this.buildRelations(fragments);
         this.wikiMatches = this.buildWikiMatches(wikiFragments, fragments);
@@ -783,30 +786,50 @@ class RenderEngine {
         if (!wikiMatches.length) return;
 
         this.ctx.save();
-        wikiMatches.slice(0, MAX_WIKI).forEach((match, index) => {
+        const baseX = this.canvas.width - 174;
+        const baseY = Math.max(92, this.canvas.height * 0.22);
+        const nodes = wikiMatches.slice(0, MAX_WIKI).map((match, index) => ({
+            match,
+            index,
+            x: baseX + Math.sin(time * 0.0014 + index * 1.4) * 12,
+            y: baseY + index * 36 + Math.cos(time * 0.0011 + index * 0.9) * 5
+        }));
+
+        for (let i = 1; i < nodes.length; i++) {
+            const left = nodes[i - 1];
+            const right = nodes[i];
+            this.ctx.strokeStyle = 'rgba(209,191,88,0.10)';
+            this.ctx.lineWidth = 0.6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(left.x, left.y);
+            this.ctx.lineTo((left.x + right.x) * 0.5, (left.y + right.y) * 0.5);
+            this.ctx.lineTo(right.x, right.y);
+            this.ctx.stroke();
+        }
+
+        nodes.forEach((node, index) => {
+            const match = node.match;
             const fragment = match.fragment;
-            const anchorY = Math.max(96, this.canvas.height - LAYOUT.marginBottom - index * Math.max(40, LAYOUT.spacingY * 0.5));
-            const anchorX = this.canvas.width - 172;
             const targetX = fragment.x - 18;
             const targetY = fragment.y + (fragment.renderLineHeight || fragment.lineHeight) * 0.45;
-            const pulse = 0.08 + match.score * 0.22;
+            const pulse = 0.08 + match.score * 0.16;
 
             this.ctx.strokeStyle = `rgba(209,191,88,${pulse})`;
             this.ctx.lineWidth = 0.7;
             this.ctx.beginPath();
-            this.ctx.moveTo(anchorX, anchorY);
-            this.ctx.lineTo((anchorX + targetX) * 0.5, anchorY + 2);
+            this.ctx.moveTo(node.x, node.y);
+            this.ctx.lineTo((node.x + targetX) * 0.5, node.y + 2);
             this.ctx.lineTo(targetX, targetY);
             this.ctx.stroke();
 
             this.ctx.fillStyle = `rgba(209,191,88,${pulse + 0.08})`;
             this.ctx.beginPath();
-            this.ctx.arc(anchorX, anchorY, 1.4, 0, Math.PI * 2);
+            this.ctx.arc(node.x, node.y, 1.4, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.font = '10px IBM Plex Mono, monospace';
             this.ctx.fillStyle = `rgba(209,191,88,${0.24 + pulse})`;
-            this.ctx.fillText(match.wiki.term, anchorX - 118, anchorY - 5);
+            this.ctx.fillText(match.wiki.term, node.x - 118, node.y - 5);
         });
         this.ctx.restore();
     }
@@ -837,6 +860,7 @@ class SceneManager {
             const extracted = await extractPdfFragments(source);
             const curated = curateFragments(extracted);
             for (const text of curated) {
+                if (isForbiddenText(text)) continue;
                 rawEntries.push({
                     text,
                     source,
@@ -924,9 +948,9 @@ class SceneManager {
                 fragment.state = FRAGMENT_STATE.ACTIVE;
                 fragment.activatedAt = this.layoutTime;
                 fragment.revealProgress = 0;
-                fragment.opacity = 0.08;
-                fragment.x = fragment.targetX + this.layoutEngine.seededNoise(fragment.clusterIndex + fragment.clusterOrder, 1, this.layoutEngine.seed) * 14 - 7;
-                fragment.y = fragment.targetY + LAYOUT.riseDistance * 0.6;
+                fragment.opacity = MIN_ACTIVE_OPACITY;
+                fragment.x = fragment.targetX;
+                fragment.y = fragment.targetY + LAYOUT.riseDistance * 0.4;
                 activeCount++;
             }
         }
@@ -937,7 +961,7 @@ class SceneManager {
             if (activeAge >= ACTIVE_MIN_DISPLAY + 1.8) {
                 fragment.state = FRAGMENT_STATE.FOUNDATION;
                 fragment.revealedAt = this.layoutTime;
-                fragment.opacity = Math.max(fragment.opacity, 0.18);
+                fragment.opacity = Math.max(fragment.opacity, MIN_FOUNDATION_OPACITY);
             }
         }
 
@@ -949,18 +973,11 @@ class SceneManager {
             .filter(fragment => fragment.state === FRAGMENT_STATE.FOUNDATION)
             .slice(0, MAX_FRAGMENTS);
 
-        const foundationStartY = this.canvasHeightOffset();
-        const foundationWidth = Math.min(canvas.width * 0.82, this.fragments.length * (LAYOUT.fragmentWidth * 0.62 + 12));
-        const foundationStartX = (canvas.width - foundationWidth) * 0.5 + LAYOUT.marginX * 0.5;
-        const spacing = foundationWidth / Math.max(1, this.fragments.filter(f => f.state === FRAGMENT_STATE.FOUNDATION).length || 1);
-        let foundationIndex = 0;
-
         for (const fragment of this.fragments) {
             if (fragment.state !== FRAGMENT_STATE.FOUNDATION) continue;
-            fragment.targetX = Math.min(canvas.width - LAYOUT.marginX - fragment.maxWidth, Math.max(LAYOUT.marginX, foundationStartX + foundationIndex * spacing));
-            fragment.targetY = foundationStartY;
+            fragment.targetX = fragment.clusterAnchorX;
+            fragment.targetY = fragment.clusterAnchorY + fragment.clusterOrder * 18;
             fragment.renderLineHeight = LAYOUT.lineHeight;
-            foundationIndex++;
         }
     }
 
@@ -971,10 +988,10 @@ class SceneManager {
     updateMotion(dt = 0.016) {
         for (const fragment of this.fragments) {
             if (fragment.state === FRAGMENT_STATE.QUEUED) {
-                fragment.opacity = Math.min(fragment.opacity + dt * 0.06, 0.1);
-                fragment.scale = 0.9;
-                fragment.x += (fragment.targetX - fragment.x) * 0.02;
-                fragment.y += (fragment.targetY + LAYOUT.riseDistance * 0.6 - fragment.y) * 0.02;
+                fragment.opacity = Math.min(fragment.opacity + dt * 0.03, MIN_QUEUE_OPACITY);
+                fragment.scale = 0.92;
+                fragment.x += (fragment.targetX - fragment.x) * 0.012;
+                fragment.y += (fragment.targetY + LAYOUT.riseDistance * 0.35 - fragment.y) * 0.012;
                 continue;
             }
 
@@ -982,18 +999,18 @@ class SceneManager {
                 const activeAge = Math.max(0, this.layoutTime - fragment.activatedAt);
                 const progress = Math.min(1, activeAge / 1.8);
                 fragment.revealProgress = progress;
-                fragment.opacity = Math.min(1, 0.58 + progress * 0.42);
-                fragment.scale = fragment.scale + ((fragment.baseScale || 1) - fragment.scale) * (0.06 + progress * 0.22);
-                fragment.x += (fragment.targetX - fragment.x) * (0.06 + progress * 0.12);
-                fragment.y += ((fragment.targetY - 6 - progress * 8) - fragment.y) * (0.06 + progress * 0.16);
+                fragment.opacity = Math.min(1, MIN_ACTIVE_OPACITY + progress * 0.62);
+                fragment.scale = fragment.scale + ((fragment.baseScale || 1) - fragment.scale) * (0.04 + progress * 0.16);
+                fragment.x += (fragment.targetX - fragment.x) * (0.03 + progress * 0.04);
+                fragment.y += (fragment.targetY - fragment.y) * (0.03 + progress * 0.05);
                 continue;
             }
 
             if (fragment.state === FRAGMENT_STATE.FOUNDATION) {
-                fragment.opacity = Math.max(0.18, fragment.opacity + dt * 0.005);
-                fragment.scale += ((fragment.baseScale || 1) - fragment.scale) * 0.01;
-                fragment.x += (fragment.targetX - fragment.x) * 0.015;
-                fragment.y += (fragment.targetY - fragment.y) * 0.015;
+                fragment.opacity = Math.max(MIN_FOUNDATION_OPACITY, fragment.opacity + dt * 0.002);
+                fragment.scale += ((fragment.baseScale || 1) - fragment.scale) * 0.006;
+                fragment.x += (fragment.targetX - fragment.x) * 0.008;
+                fragment.y += (fragment.targetY - fragment.y) * 0.008;
             }
         }
     }
