@@ -912,34 +912,42 @@ class SceneManager {
         this.renderEngine.prepareBackground(this.layoutEngine.seed);
     }
 
-    updateStateMachine(dt) {
+    updateStateMachine() {
         const maxActive = MAX_ACTIVE;
+        const currentActive = this.fragments.filter(fragment => fragment.state === FRAGMENT_STATE.ACTIVE).length;
+        let activeCount = currentActive;
 
         for (const fragment of this.layoutEngine.queueOrder) {
             if (fragment.state !== FRAGMENT_STATE.QUEUED) continue;
-            if (this.activeFragments.length >= maxActive) break;
+            if (activeCount >= maxActive) break;
             if (this.layoutTime >= fragment.revealDelay) {
                 fragment.state = FRAGMENT_STATE.ACTIVE;
                 fragment.activatedAt = this.layoutTime;
                 fragment.revealProgress = 0;
-                fragment.opacity = 0;
+                fragment.opacity = 0.08;
                 fragment.x = fragment.targetX + this.layoutEngine.seededNoise(fragment.clusterIndex + fragment.clusterOrder, 1, this.layoutEngine.seed) * 14 - 7;
                 fragment.y = fragment.targetY + LAYOUT.riseDistance * 0.6;
-                this.activeFragments.push(fragment);
+                activeCount++;
             }
         }
 
-        for (let i = this.activeFragments.length - 1; i >= 0; i--) {
-            const fragment = this.activeFragments[i];
+        for (const fragment of this.fragments) {
+            if (fragment.state !== FRAGMENT_STATE.ACTIVE) continue;
             const activeAge = this.layoutTime - fragment.activatedAt;
             if (activeAge >= ACTIVE_MIN_DISPLAY + 1.8) {
                 fragment.state = FRAGMENT_STATE.FOUNDATION;
                 fragment.revealedAt = this.layoutTime;
                 fragment.opacity = Math.max(fragment.opacity, 0.18);
-                this.foundationFragments.push(fragment);
-                this.activeFragments.splice(i, 1);
             }
         }
+
+        this.activeFragments = this.fragments
+            .filter(fragment => fragment.state === FRAGMENT_STATE.ACTIVE)
+            .slice(0, MAX_ACTIVE);
+
+        this.foundationFragments = this.fragments
+            .filter(fragment => fragment.state === FRAGMENT_STATE.FOUNDATION)
+            .slice(0, MAX_FRAGMENTS);
 
         const foundationStartY = this.canvasHeightOffset();
         const foundationWidth = Math.min(canvas.width * 0.82, this.fragments.length * (LAYOUT.fragmentWidth * 0.62 + 12));
@@ -960,7 +968,7 @@ class SceneManager {
         return canvas.height - 110;
     }
 
-    updateMotion(dt) {
+    updateMotion(dt = 0.016) {
         for (const fragment of this.fragments) {
             if (fragment.state === FRAGMENT_STATE.QUEUED) {
                 fragment.opacity = Math.min(fragment.opacity + dt * 0.06, 0.1);
@@ -994,8 +1002,11 @@ class SceneManager {
         this.speedMultiplier = speedMultiplier;
         this.density = density;
 
-        if (this.running && isPlaying) {
-            const step = 0.0035 * Math.max(0.12, Math.min(3, this.speedMultiplier));
+        const step = this.running && isPlaying
+            ? 0.0035 * Math.max(0.12, Math.min(3, this.speedMultiplier))
+            : 0;
+
+        if (step > 0) {
             this.time += step;
             this.layoutTime += step;
         }
@@ -1006,7 +1017,7 @@ class SceneManager {
         }
 
         this.updateStateMachine();
-        this.updateMotion();
+        this.updateMotion(step || 0.016);
 
         this.renderEngine.clearCanvas();
         this.renderEngine.drawBackground();
