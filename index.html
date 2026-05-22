@@ -6,9 +6,23 @@
   <meta name="description" content="Handlungsraum ist ein langsamer Aufbauprozess aus Textfragmenten, Materialfläche und relationalen Wikipedia-Eingriffen.">
   <title>Handlungsraum</title>
   <link rel="stylesheet" href="./style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=IBM+Plex+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <canvas id="roomCanvas" aria-hidden="true"></canvas>
+
+  <div id="hud" aria-hidden="false">
+    <button id="playPause">Pause</button>
+    <label>Speed <input id="speed" type="range" min="0.2" max="2" step="0.1" value="1"></label>
+    <label>Density
+      <select id="density">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </label>
+    <button id="refreshFragments">Refresh</button>
+  </div>
 
   <script src="./script.js" defer></script>
 </body>

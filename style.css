@@ -1,15 +1,16 @@
 :root {
-    --bg: #131313;
-    --bg-deep: #090909;
-    --bg-surface: #232221;
-    --text: #efebe0;
+    --bg: #121212;
+    --bg-deep: #080808;
+    --bg-surface: #2a2927;
+    --text: #f5f1e6;
     --muted: rgba(239, 235, 224, 0.72);
     --accent: #d1bf58;
     --accent-soft: rgba(209, 191, 88, 0.12);
     --concrete: rgba(255, 255, 255, 0.024);
     --asphalt: rgba(255, 255, 255, 0.012);
     --shadow: rgba(0, 0, 0, 0.72);
-    --font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --font: "Inter", "Oswald", "Roboto Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --mono-font: "IBM Plex Mono", monospace;
 }
 
 * {
@@ -26,10 +27,11 @@ body {
     overflow: hidden;
     color: var(--text);
     background:
-        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.022), transparent 24%),
-        radial-gradient(circle at 78% 76%, rgba(255, 255, 255, 0.012), transparent 28%),
-        linear-gradient(180deg, #252423 0%, var(--bg-surface) 30%, var(--bg) 66%, var(--bg-deep) 100%);
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.018), transparent 24%),
+        radial-gradient(circle at 78% 76%, rgba(255, 255, 255, 0.01), transparent 28%),
+        linear-gradient(180deg, #2d2c2a 0%, var(--bg-surface) 30%, var(--bg) 66%, var(--bg-deep) 100%);
     font-family: var(--font);
+    font-weight: 400;
     letter-spacing: 0.01em;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -42,9 +44,9 @@ body::before {
     pointer-events: none;
     z-index: 2;
     background:
-        radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.014), transparent 22%),
-        radial-gradient(circle at 74% 78%, rgba(255, 255, 255, 0.01), transparent 24%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.008), transparent 24%, transparent 78%, rgba(0, 0, 0, 0.24));
+        radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.01), transparent 22%),
+        radial-gradient(circle at 74% 78%, rgba(255, 255, 255, 0.007), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.005), transparent 24%, transparent 78%, rgba(0, 0, 0, 0.28));
     mix-blend-mode: soft-light;
     opacity: 0.48;
 }
@@ -57,11 +59,11 @@ body::after {
     z-index: 3;
     background:
         radial-gradient(circle at center, transparent 52%, rgba(0, 0, 0, 0.42) 100%),
-        linear-gradient(135deg, rgba(209, 191, 88, 0.008), transparent 30%, transparent 70%, rgba(209, 191, 88, 0.008));
+        linear-gradient(135deg, rgba(209, 191, 88, 0.005), transparent 30%, transparent 70%, rgba(209, 191, 88, 0.005));
     box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.014),
-        inset 0 0 220px rgba(0, 0, 0, 0.64);
-    opacity: 0.86;
+        inset 0 0 0 1px rgba(255, 255, 255, 0.01),
+        inset 0 0 250px rgba(0, 0, 0, 0.7);
+    opacity: 0.8;
 }
 
 #roomCanvas {
@@ -71,8 +73,34 @@ body::after {
     height: 100vh;
     z-index: 1;
     pointer-events: none;
-    filter: contrast(1.03) saturate(0.68) brightness(0.9);
+    filter: contrast(1.05) saturate(0.58) brightness(0.87);
 }
+
+#hud {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 40;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgba(20,20,18,0.62);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: var(--mono-font);
+    color: var(--text);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.48);
+}
+
+#hud button, #hud select, #hud input[type="range"] {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+#hud label { font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) {
     * {

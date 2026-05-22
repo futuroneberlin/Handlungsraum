@@ -1,24 +1,22 @@
 const canvas = document.getElementById('roomCanvas');
 const ctx = canvas.getContext('2d');
 
-const PDF_JS_URL =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
-
-const PDF_JS_WORKER_URL =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+// Use a single stable UMD PDF.js build (no .mjs). Try primary CDN then fallback.
+const PDF_JS_URL = './vendor/pdfjs/pdf.min.js';
+const PDF_JS_WORKER_URL = './vendor/pdfjs/pdf.worker.min.js';
 
 const PDF_SOURCES = [
-    './pdf/konzeptpapier.pdf',
-    './pdf/kunstraum.pdf'
+    './pdf/handlungsraum.pdf?v=20260522',
+    './pdf/konzeptpapier.pdf?v=20260522',
+    './pdf/kunstraum.pdf?v=20260522'
 ];
 
 const WIKI_TERMS = [
+    'Kunst',
     'Soziale Plastik',
-    'Joseph Beuys',
-    'Kunst als Erfahrung',
-    'Georg W. Bertram',
-    `Kunst`,
-    `Bildhauerei`,
+    'Raum',
+    'Handlung',
+    'Relation'
 ];
 
 const FORBIDDEN_TERMS = [
@@ -28,25 +26,174 @@ const FORBIDDEN_TERMS = [
     'migration'
 ];
 
+const STOPWORDS = new Set([
+    'und', 'oder', 'der', 'die', 'das', 'ein', 'eine', 'einer', 'eines', 'dem', 'den', 'des',
+    'im', 'in', 'am', 'an', 'auf', 'aus', 'mit', 'von', 'für', 'zu', 'als', 'ist', 'sind', 'war',
+    'wird', 'werden', 'sich', 'nicht', 'mehr', 'nur', 'auch', 'wie', 'durch', 'bei', 'zwischen',
+    'the', 'and', 'of', 'to', 'in', 'for', 'with', 'as', 'is', 'are', 'be', 'this', 'that',
+    'pdf', 'seite', 'seiten', 'text', 'fragment', 'fragmente', 'raum', 'handlungsraum'
+]);
+
+const THEME_ALIASES = new Map([
+    ['kunst', 'kunst'],
+    ['beuys', 'sozial'],
+    ['plastik', 'sozial'],
+    ['sozial', 'sozial'],
+    ['gesellschaft', 'praxis'],
+    ['praxis', 'praxis'],
+    ['handlung', 'handlung'],
+    ['handeln', 'handlung'],
+    ['raum', 'raum'],
+    ['relation', 'relation'],
+    ['bezug', 'relation'],
+    ['aufbau', 'aufbau'],
+    ['struktur', 'aufbau'],
+    ['material', 'material'],
+    ['beton', 'material'],
+    ['asphalt', 'material'],
+    ['bewegung', 'bewegung'],
+    ['dynamik', 'bewegung'],
+    ['leere', 'leere'],
+    ['negativ', 'leere']
+]);
+
+const THEME_AXIS_ORDER = ['aufbau', 'relation', 'praxis', 'sozial', 'raum', 'handlung', 'bewegung', 'material', 'leere'];
+
 let fragments = [];
 let wikiFragments = [];
 
+// Fragment state constants
+const FRAGMENT_STATE = {
+    QUEUED: 'queued',
+    ACTIVE: 'active',
+    FOUNDATION: 'foundation'
+};
+
+const MAX_ACTIVE = 3; // allow 2-3 active fragments
+const ACTIVE_MIN_DISPLAY = 1.6; // seconds after reveal to remain active
+
+
 let animationTime = 0;
 let layoutTime = 0;
+// UX state
+let isPlaying = true;
+let speedMultiplier = 1.0;
+let density = 'medium'; // low, medium, high
+let renderStarted = false;
+
+function setupUI() {
+    const playBtn = document.getElementById('playPause');
+    const speedEl = document.getElementById('speed');
+    const densityEl = document.getElementById('density');
+    const refreshBtn = document.getElementById('refreshFragments');
+
+    if (playBtn) {
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+        });
+    }
+
+    if (speedEl) {
+        speedEl.addEventListener('input', (e) => {
+            speedMultiplier = parseFloat(e.target.value) || 1.0;
+        });
+    }
+
+    if (densityEl) {
+        densityEl.addEventListener('change', (e) => {
+            density = e.target.value;
+            // reload fragments with new density
+            bootstrap();
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => bootstrap());
+    }
+}
+
+function curateFragments(extracted) {
+    // stronger curatorial rules to prefer semantically complete sentences
+    const minLen = 0;
+
+    const candidates = extracted
+        .map(t => sanitizeFragment(t))
+        .filter(Boolean)
+        .filter(t => t.length >= minLen)
+        .map(text => ({ text, score: scoreFragmentText(text) }))
+        .sort((a, b) => a.score - b.score);
+
+    // prioritize sentence endings and punctuation variety
+    return candidates.map(c => c.text);
+}
+
+function tokenizeForClusters(text) {
+    return cleanText(text)
+        .toLowerCase()
+        .replace(/[^a-zà-žäöüß0-9\s-]/gi, ' ')
+        .split(/\s+/)
+        .map(token => token.replace(/^-+|-+$/g, ''))
+        .filter(token => token.length > 3 && !STOPWORDS.has(token) && !/^\d+$/.test(token));
+}
+
+function buildSemanticProfile(items) {
+    const counts = new Map();
+
+    for (const item of items) {
+        const tokens = tokenizeForClusters(item.text);
+        const uniqueTokens = new Set(tokens);
+
+        for (const token of uniqueTokens) {
+            counts.set(token, (counts.get(token) || 0) + 1);
+        }
+    }
+
+    return counts;
+}
+
+function assignClusterKey(text, profile) {
+    const tokens = tokenizeForClusters(text);
+    for (const token of tokens) {
+        if (THEME_ALIASES.has(token)) {
+            return THEME_ALIASES.get(token);
+        }
+    }
+
+    let bestToken = '';
+    let bestScore = -1;
+
+    for (const token of tokens) {
+        const score = profile.get(token) || 0;
+        if (score > bestScore) {
+            bestToken = token;
+            bestScore = score;
+        }
+    }
+
+    return THEME_ALIASES.get(bestToken) || bestToken || tokens[0] || 'grund';
+}
+
+function jitter(seed, spread) {
+    const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+    return ((value - Math.floor(value)) - 0.5) * 2 * spread;
+}
 
 const LAYOUT = {
     spacingX: 280,
-    spacingY: 118,
-    marginX: 96,
-    marginBottom: 112,
-    rowDelay: 1.35,
+    spacingY: 220,
+    marginX: 88,
+    marginBottom: 220,
+    rowDelay: 1.7,
     cellDelay: 0.1,
     riseDistance: 18,
     driftX: 1.0,
     driftY: 0.45,
-    fragmentWidth: 330,
-    lineHeight: 27,
-    visibleWikiRelations: 4
+    fragmentWidth: 380,
+    lineHeight: 30,
+    visibleWikiRelations: 6,
+    maxFragmentsPerSource: 999,
+    targetFragmentLength: 140
 };
 
 function resizeCanvas() {
@@ -61,45 +208,93 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-async function loadExternalScript(url) {
+async function ensurePdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
+        script.src = PDF_JS_URL;
+        script.async = true;
+        script.onload = () => {
+            try {
+                window.pdfjsLib = window.pdfjsLib || window.pdfjsViewer || window['pdfjs-dist/build/pdf'] || window['pdfjs-dist'];
+                if (!window.pdfjsLib) {
+                    console.warn('[PDF] script loaded but pdfjsLib not on window');
+                    return reject(new Error('pdfjsLib not found'));
+                }
 
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = reject;
-
+                window.pdfjsLib.GlobalWorkerOptions = window.pdfjsLib.GlobalWorkerOptions || {};
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_JS_WORKER_URL;
+                console.log('[PDF] loaded');
+                resolve(window.pdfjsLib);
+            } catch (err) {
+                console.error('[PDF] init error after load', err);
+                reject(err);
+            }
+        };
+        script.onerror = (e) => {
+            console.error('[PDF] script load error', PDF_JS_URL, e);
+            reject(e);
+        };
         document.head.appendChild(script);
     });
 }
 
-async function ensurePdfJs() {
-    if (window.pdfjsLib) {
-        return window.pdfjsLib;
-    }
+// global error handlers to catch silent promise rejections or load errors
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('[UnhandledRejection]', e.reason);
+});
 
-    await loadExternalScript(
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
-    );
-
-    if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        return window.pdfjsLib;
-    }
-
-    throw new Error('PDF.js konnte nicht initialisiert werden');
-}
+window.addEventListener('error', (e) => {
+    console.error('[WindowError]', e.message, e.filename, e.lineno, e.colno);
+});
 
 function cleanText(text) {
     return text.replace(/\s+/g, ' ').trim();
+}
+
+function sanitizeFragment(text) {
+    if (!text) return null;
+
+    // remove hyphenation artifacts and strange line-break remnants
+    let t = text.replace(/-\s+/g, '');
+
+    // remove URLs and file paths
+    t = t.replace(/https?:\/\/\S+|www\.\S+|\/\S+\.pdf/gi, '');
+
+    // remove repeated punctuation or parser markers
+    t = t.replace(/\.{2,}/g, '.');
+    t = t.replace(/[\u00A0\u200B\u200C\u200D]/g, '');
+
+    t = cleanText(t);
+
+    // drop fragments that are too short or single words
+    const words = t.split(' ').filter(Boolean);
+    if (words.length < 3) return null;
+
+    // drop fragments with many non-letter characters (parsing artefacts)
+        const nonLetterCount = (t.match(/[^A-Za-zÀ-ž\s,\.\-\'\"]/g) || []).length;
+    if (nonLetterCount > Math.max(2, words.length * 0.12)) return null;
+
+    // drop fragments that include forbidden terms
+    if (isForbiddenText(t)) return null;
+
+    return t;
 }
 
 function isForbiddenText(text) {
     const normalized = cleanText(text).toLowerCase();
 
     return FORBIDDEN_TERMS.some(term => normalized.includes(term));
+}
+
+function scoreFragmentText(text) {
+    const length = text.length;
+    const targetDistance = Math.abs(length - LAYOUT.targetFragmentLength);
+    const sentenceBonus = /[.!?]$/.test(text) ? -10 : 0;
+    const commaBonus = text.includes(',') ? -4 : 0;
+
+    return targetDistance + sentenceBonus + commaBonus;
 }
 
 function splitIntoSemanticUnits(text) {
@@ -126,11 +321,6 @@ function splitIntoSemanticUnits(text) {
             : [sentence];
 
         for (const piece of pieces) {
-            if (isForbiddenText(piece)) {
-                pushCurrent();
-                continue;
-            }
-
             const candidate = current ? `${current} ${piece}` : piece;
 
             if (candidate.length <= maxLength) {
@@ -144,8 +334,9 @@ function splitIntoSemanticUnits(text) {
 
     pushCurrent();
 
+    // sanitize and filter units
     return units
-        .map(unit => unit.replace(/\s+/g, ' ').trim())
+        .map(unit => sanitizeFragment(unit))
         .filter(Boolean);
 }
 
@@ -170,7 +361,10 @@ async function extractPdfFragments(path) {
             fullText += ` ${pageText}`;
         }
 
-        return splitIntoSemanticUnits(fullText);
+        const units = splitIntoSemanticUnits(fullText);
+        console.log(`PDF geladen: ${path} — Einheiten: ${units.length}`);
+        console.log('[PDF] loaded', path);
+        return units;
 
     } catch (error) {
         console.error('PDF Fehler:', path, error);
@@ -184,21 +378,26 @@ async function loadAllPdfFragments() {
     for (const source of PDF_SOURCES) {
         const extracted = await extractPdfFragments(source);
 
-        for (const text of extracted) {
-            if (isForbiddenText(text)) {
-                continue;
-            }
+        const curated = curateFragments(extracted);
 
+        for (const text of curated) {
             allFragments.push({
                 text,
                 source,
+                sourceName: source.split('/').pop() || source,
                 x: 0,
                 y: 0,
                 opacity: 0,
-                size: Math.min(19, 15.5 + Math.min(7, text.length / 28)),
+                size: Math.min(20, 16.5 + Math.min(5.5, text.length / 34)),
                 maxWidth: LAYOUT.fragmentWidth,
                 lineHeight: LAYOUT.lineHeight,
                 lines: []
+                ,
+                // state machine defaults
+                state: FRAGMENT_STATE.QUEUED,
+                stateTime: 0,
+                activatedAt: null,
+                revealedAt: null
             });
         }
     }
@@ -215,6 +414,10 @@ async function fetchWikipediaRelations() {
                 `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`
             );
 
+            if (!response.ok) {
+                continue;
+            }
+
             const data = await response.json();
 
             if (data.extract) {
@@ -225,46 +428,81 @@ async function fetchWikipediaRelations() {
             }
 
         } catch (error) {
-            console.warn('Wikipedia Fehler:', term);
+            continue;
         }
     }
 
     wikiFragments = collected;
+    console.log('[WIKI] loaded:', collected.length);
 }
 
 function layoutFragments() {
     const usableWidth = Math.max(1, canvas.width - LAYOUT.marginX * 2);
-    const cols = Math.max(1, Math.floor(usableWidth / LAYOUT.spacingX));
-    const rows = Math.ceil(fragments.length / cols);
-    const baselineY = canvas.height - LAYOUT.marginBottom;
-    const fragmentWidth = Math.min(
-        LAYOUT.fragmentWidth,
-        Math.max(220, Math.floor((usableWidth - 24) / cols))
-    );
+    const fragmentWidth = Math.min(LAYOUT.fragmentWidth, Math.max(250, Math.floor(usableWidth * 0.46)));
 
-    fragments.forEach((fragment, index) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
+    // prepare lines and heights
+    fragments.forEach(f => {
+        f.maxWidth = fragmentWidth;
+        f.lines = wrapFragmentText(f.text, f.maxWidth, f.size);
+        f.height = Math.max(1, f.lines.length) * f.lineHeight + 8; // padding
+    });
 
-        fragment.row = row;
-        fragment.col = col;
-        fragment.rowOrder = row * cols + col;
+    const profile = buildSemanticProfile(fragments);
 
-        fragment.targetX =
-            LAYOUT.marginX + col * LAYOUT.spacingX;
+    fragments.forEach(fragment => {
+        fragment.clusterKey = assignClusterKey(fragment.text, profile);
+        fragment.clusterWeight = profile.get(fragment.clusterKey) || 1;
+    });
 
-        fragment.targetY =
-            baselineY - (rows - 1 - row) * LAYOUT.spacingY;
+    const clusters = new Map();
+    for (const fragment of fragments) {
+        if (!clusters.has(fragment.clusterKey)) {
+            clusters.set(fragment.clusterKey, []);
+        }
+        clusters.get(fragment.clusterKey).push(fragment);
+    }
 
-        fragment.maxWidth = fragmentWidth;
-        fragment.lines = wrapFragmentText(fragment.text, fragment.maxWidth, fragment.size);
+    const clusterEntries = Array.from(clusters.entries()).sort((left, right) => {
+        const leftWeight = left[1].length;
+        const rightWeight = right[1].length;
+        return rightWeight - leftWeight || left[0].localeCompare(right[0]);
+    });
 
-        fragment.revealDelay =
-            (rows - 1 - row) * LAYOUT.rowDelay + col * LAYOUT.cellDelay;
+    const axes = [0.83, 0.68, 0.53, 0.38, 0.23];
+    const axisXCenters = [0.14, 0.31, 0.49, 0.67, 0.84, 0.95];
+    const axisSpacing = Math.max(112, (canvas.height - LAYOUT.marginBottom * 1.15) / axes.length);
 
-        fragment.x = fragment.targetX;
-        fragment.y = fragment.targetY + LAYOUT.riseDistance;
-        fragment.opacity = 0;
+    clusterEntries.forEach(([key, clusterFragments], clusterIndex) => {
+        const themeIndex = Math.max(0, THEME_AXIS_ORDER.indexOf(key));
+        const axisIndex = themeIndex >= 0 ? themeIndex % axes.length : clusterIndex % axes.length;
+        const xSeed = axisXCenters[axisIndex % axisXCenters.length];
+        const clusterCenterX = LAYOUT.marginX + usableWidth * xSeed + jitter(clusterIndex + key.length, usableWidth * 0.025);
+        const clusterCenterY = canvas.height - LAYOUT.marginBottom - axisIndex * axisSpacing;
+
+        clusterFragments.forEach((fragment, index) => {
+            fragment.clusterIndex = clusterIndex;
+            fragment.clusterOrder = index;
+            fragment.clusterSize = clusterFragments.length;
+
+            const localSpread = Math.min(72, 12 + clusterFragments.length * 4);
+            const xOffset = (index - (clusterFragments.length - 1) / 2) * 14 + jitter(index + clusterIndex, localSpread * 0.18);
+            const yOffset = (index % 2 === 0 ? -1 : 1) * Math.min(14, 5 + index * 1.5) + jitter(index + 3, 6);
+
+            fragment.targetX = Math.min(
+                canvas.width - LAYOUT.marginX - fragment.maxWidth,
+                Math.max(LAYOUT.marginX, clusterCenterX + xOffset)
+            );
+
+            fragment.targetY = Math.max(78, clusterCenterY + yOffset);
+
+            fragment.baseScale = Math.min(1.1, Math.max(0.9, 0.95 + clusterFragments.length * 0.01 - index * 0.004));
+            fragment.scale = 0.9;
+            fragment.revealDelay = clusterIndex * 0.5 + index * 0.12;
+
+            fragment.x = fragment.targetX;
+            fragment.y = fragment.targetY + LAYOUT.riseDistance;
+            fragment.opacity = 0;
+        });
     });
 
     fragments.sort((left, right) => left.revealDelay - right.revealDelay);
@@ -272,7 +510,7 @@ function layoutFragments() {
 
 function wrapFragmentText(text, maxWidth, fontSize) {
     ctx.save();
-    ctx.font = `${fontSize}px "Arial Narrow", sans-serif`;
+    ctx.font = `${fontSize}px Inter, sans-serif`;
 
     const words = cleanText(text).split(' ').filter(Boolean);
     const lines = [];
@@ -299,171 +537,358 @@ function wrapFragmentText(text, maxWidth, fontSize) {
 }
 
 function getFragmentProgress(fragment) {
-    const elapsed = layoutTime - fragment.revealDelay;
+    // progress is state-aware: for queued -> 0, for active -> ramp during reveal
+    if (!fragment) return 0;
 
-    if (elapsed <= 0) {
-        return 0;
+    if (fragment.state === FRAGMENT_STATE.QUEUED) return 0;
+
+    // reveal duration tuned for readable typewriter
+    const revealDuration = 1.8;
+
+    if (fragment.state === FRAGMENT_STATE.ACTIVE) {
+        const since = (layoutTime - (fragment.activatedAt || fragment.revealDelay || 0));
+        if (since <= 0) return 0;
+        return Math.min(1, since / revealDuration);
     }
 
-    return Math.min(1, elapsed / 1.8);
+    // foundation: fully revealed
+    return 1;
 }
 
 function applyMotion(fragment, index) {
     const progress = getFragmentProgress(fragment);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const t = animationTime * 0.16;
 
-    const driftX = Math.sin(t + index * 0.21) * LAYOUT.driftX;
-    const driftY = Math.cos(t * 0.72 + index * 0.14) * LAYOUT.driftY;
+    // heavy, slow, architectural motions — remove particle-like drift
+    const lerp = (from, to, t) => from + (to - from) * Math.max(0, Math.min(1, t));
 
-    fragment.x =
-        fragment.targetX +
-        driftX * eased * 0.55;
+    if (fragment.state === FRAGMENT_STATE.QUEUED) {
+        // keep queued fragments subtle and out of focus under the horizon
+        fragment.x = lerp(fragment.x, fragment.targetX, 0.02);
+        fragment.y = lerp(fragment.y, fragment.targetY + LAYOUT.riseDistance * 0.6, 0.02);
+        fragment.opacity = Math.min(0.12, fragment.opacity + 0.01);
+        fragment.scale = lerp(fragment.scale || 0.9, 0.92, 0.02);
+        return;
+    }
 
-    fragment.y =
-        fragment.targetY +
-        (1 - eased) * LAYOUT.riseDistance +
-        driftY * eased * 0.45;
+    if (fragment.state === FRAGMENT_STATE.ACTIVE) {
+        // active fragments appear with a slight heavy rise then settle into foreground
+        const eased = 1 - Math.pow(1 - progress, 3);
+        fragment.x = lerp(fragment.x, fragment.targetX, 0.08 + eased * 0.12);
+        fragment.y = lerp(fragment.y, fragment.targetY - 6 - eased * 8, 0.06 + eased * 0.18);
+        fragment.opacity = Math.min(1, 0.6 + progress * 0.45);
+        const scaleTarget = fragment.baseScale || 1.02;
+        fragment.scale = lerp(fragment.scale || 0.95, scaleTarget, 0.06 + eased * 0.24);
+        return;
+    }
 
-    fragment.opacity = 0.08 + progress * 0.84;
+    // FOUNDATION: minimal, slow settling to exact grid, no sinus drift
+    if (fragment.state === FRAGMENT_STATE.FOUNDATION) {
+        const settle = 0.015; // very slow, heavy movement
+        fragment.x = lerp(fragment.x, fragment.targetX, settle);
+        fragment.y = lerp(fragment.y, fragment.targetY, settle);
+        fragment.opacity = Math.max(0.18, lerp(fragment.opacity, 0.34, 0.01));
+        fragment.scale = lerp(fragment.scale || 1, fragment.baseScale || 1.0, 0.01);
+        return;
+    }
 }
 
-function drawBackground() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function tokenizeSet(text) {
+    return new Set(tokenizeForClusters(text));
+}
 
-    const gradient = ctx.createLinearGradient(
-        0,
-        0,
-        0,
-        canvas.height
-    );
+function tokenOverlapScore(aText, bText) {
+    const a = tokenizeSet(aText);
+    const b = tokenizeSet(bText);
+    if (!a.size || !b.size) return 0;
+    let inter = 0;
+    for (const t of a) if (b.has(t)) inter++;
+    // normalized by smaller set so that short but precise overlap counts
+    return inter / Math.min(a.size, b.size);
+}
 
-    gradient.addColorStop(0, '#1a1a18');
-    gradient.addColorStop(0.45, '#131412');
-    gradient.addColorStop(1, '#090909');
+function manageFragmentStates() {
+    // activate queued fragments based on revealDelay and limit active count
+    const activeCount = fragments.filter(f => f.state === FRAGMENT_STATE.ACTIVE).length;
+    const queued = fragments.filter(f => f.state === FRAGMENT_STATE.QUEUED).sort((a,b)=>a.revealDelay - b.revealDelay);
 
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const gridSpacing = 72;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.028)';
-    ctx.lineWidth = 1;
-
-    for (let x = 0; x <= canvas.width; x += gridSpacing) {
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, 0);
-        ctx.lineTo(x + 0.5, canvas.height);
-        ctx.stroke();
-    }
-
-    for (let y = 0; y <= canvas.height; y += gridSpacing) {
-        ctx.beginPath();
-        ctx.moveTo(0, y + 0.5);
-        ctx.lineTo(canvas.width, y + 0.5);
-        ctx.stroke();
-    }
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.042)';
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height - 86.5);
-    ctx.lineTo(canvas.width, canvas.height - 86.5);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.026)';
-    for (let i = 0; i < 5; i++) {
-        const x = 112 + i * 284;
-        ctx.beginPath();
-        ctx.moveTo(x, canvas.height - 86);
-        ctx.lineTo(x, canvas.height - 344 - (i % 2) * 18);
-        ctx.stroke();
-    }
-
-    ctx.restore();
-
-    const stains = [
-        [0.18, 0.2, 260, 180, 0.16],
-        [0.7, 0.27, 320, 210, 0.12],
-        [0.52, 0.72, 380, 240, 0.1],
-        [0.84, 0.78, 220, 170, 0.14],
-        [0.32, 0.58, 240, 150, 0.08]
-    ];
-
-    stains.forEach(([fx, fy, width, height, opacity], index) => {
-        const x = canvas.width * fx;
-        const y = canvas.height * fy;
-
-        const stain = ctx.createRadialGradient(x, y, 0, x, y, Math.max(width, height));
-        stain.addColorStop(0, `rgba(255,255,255,${opacity})`);
-        stain.addColorStop(0.55, 'rgba(255,255,255,0.02)');
-        stain.addColorStop(1, 'rgba(0,0,0,0)');
-
-        ctx.fillStyle = stain;
-        ctx.beginPath();
-        ctx.ellipse(
-            x,
-            y,
-            width * (0.82 + index * 0.04),
-            height * (0.78 + index * 0.03),
-            index * 0.2,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
-    });
-
-    const grainStep = 24;
-    for (let y = 0; y < canvas.height; y += grainStep) {
-        for (let x = 0; x < canvas.width; x += grainStep) {
-            const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-            const value = seed - Math.floor(seed);
-
-            if (value > 0.75) {
-                ctx.fillStyle = `rgba(255,255,255,${0.01 + (value - 0.75) * 0.02})`;
-                ctx.fillRect(x, y, 2, 2);
-            }
+    // activate up to MAX_ACTIVE
+    for (const frag of queued) {
+        if ((fragments.filter(f=>f.state===FRAGMENT_STATE.ACTIVE).length) >= MAX_ACTIVE) break;
+        if (layoutTime >= (frag.revealDelay || 0)) {
+            frag.state = FRAGMENT_STATE.ACTIVE;
+            frag.activatedAt = layoutTime;
+            frag.stateTime = 0;
+            // ensure starting position is near target for calm entrance
+            frag.x = frag.targetX + (Math.random() * 24 - 12);
+            frag.y = frag.targetY + LAYOUT.riseDistance * 0.6;
         }
     }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.015)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
-        const y = (canvas.height / 6) * (i + 0.6);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
+    // progress active fragments to foundation after reveal + display time
+    for (const frag of fragments.filter(f => f.state === FRAGMENT_STATE.ACTIVE)) {
+        const since = layoutTime - (frag.activatedAt || 0);
+        // when fully revealed and displayed sufficiently, move to foundation
+        if (since > 1.8 + ACTIVE_MIN_DISPLAY) {
+            frag.state = FRAGMENT_STATE.FOUNDATION;
+            frag.revealedAt = layoutTime;
+            // foundation alignment: small y offset to form base row
+            frag.targetY = Math.max(canvas.height - 140, frag.targetY);
+            // ensure slight ordering left-to-right for foundation
+        }
     }
+
+    // when fragments enter foundation, optionally compress them horizontally
+    const foundation = fragments.filter(f => f.state === FRAGMENT_STATE.FOUNDATION).sort((a,b)=>a.revealedAt - b.revealedAt || a.targetX - b.targetX);
+    if (foundation.length) {
+        const baseY = canvas.height - 110;
+        const totalWidth = Math.min(canvas.width * 0.8, foundation.length * (LAYOUT.fragmentWidth * 0.62 + 12));
+        const startX = (canvas.width - totalWidth) * 0.5 + LAYOUT.marginX * 0.5;
+        const spacing = totalWidth / Math.max(1, foundation.length);
+
+        foundation.forEach((f, i) => {
+            f.targetX = Math.min(canvas.width - LAYOUT.marginX - f.maxWidth, Math.max(LAYOUT.marginX, startX + i * spacing));
+            f.targetY = baseY;
+            f.opacity = Math.max(0.18, f.opacity);
+            f.lineHeight = LAYOUT.lineHeight; // foundation uses calmer line height
+        });
+    }
+}
+
+function drawBackground() {
+    // heavy material background: concrete/asphalt layers, grain and horizontal compression bands
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // base matte fill (concrete grey)
+    ctx.fillStyle = '#8f8d86';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // deep layer: darker, low-contrast blotches to suggest distant depth
+    const deepCount = Math.max(3, Math.floor(canvas.width / 800));
+    for (let i = 0; i < deepCount; i++) {
+        const w = canvas.width * (0.3 + Math.random() * 0.7);
+        const h = canvas.height * (0.18 + Math.random() * 0.25);
+        const x = Math.random() * (canvas.width - w);
+        const y = Math.random() * (canvas.height * 0.5);
+        const g = ctx.createLinearGradient(x, y, x + w, y + h);
+        const a = 0.06 + Math.random() * 0.06;
+        g.addColorStop(0, `rgba(50,50,52,${a})`);
+        g.addColorStop(1, `rgba(80,78,74,${a * 0.5})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(x, y, w, h);
+    }
+
+    // mid layer: horizontal compression bands and formwork shadows
+    const bands = 5 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < bands; i++) {
+        const bandHeight = 28 + Math.random() * 38;
+        const y = canvas.height * (0.28 + (i / bands) * 0.6) + (Math.random() - 0.5) * 24;
+        ctx.fillStyle = `rgba(30,30,30,${0.03 + Math.random() * 0.06})`;
+        ctx.fillRect(0, y, canvas.width, bandHeight);
+
+        // occasional darker streaks (formwork seams)
+        if (Math.random() > 0.5) {
+            ctx.fillStyle = `rgba(20,20,20,${0.02 + Math.random() * 0.04})`;
+            const segW = 60 + Math.random() * 260;
+            const segX = Math.random() * canvas.width;
+            ctx.fillRect(segX, y + bandHeight * 0.2, segW, Math.min(6, bandHeight * 0.4));
+        }
+    }
+
+    // foreground: concrete stains, dust and small aggregates
+    const stains = 28;
+    for (let i = 0; i < stains; i++) {
+        const fx = Math.random();
+        const fy = 0.35 + Math.random() * 0.55;
+        const w = 40 + Math.random() * 360;
+        const h = 20 + Math.random() * 220;
+        const opacity = 0.02 + Math.random() * 0.06;
+        const x = Math.floor(canvas.width * fx - w * 0.5);
+        const y = Math.floor(canvas.height * fy - h * 0.5);
+        const g = ctx.createRadialGradient(x + w * 0.5, y + h * 0.5, 0, x + w * 0.5, y + h * 0.5, Math.max(w, h));
+        g.addColorStop(0, `rgba(20,20,18,${opacity})`);
+        g.addColorStop(0.5, `rgba(80,78,74,${opacity * 0.6})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.5, y + h * 0.5, w * (0.8 + Math.random() * 0.6), h * (0.6 + Math.random() * 0.9), Math.random() * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // subtle surface noise (dust / micrograin)
+    const grainDensity = Math.min(9000, Math.floor((canvas.width * canvas.height) / 12000));
+    for (let i = 0; i < grainDensity; i++) {
+        const x = Math.floor(Math.random() * canvas.width);
+        const y = Math.floor(Math.random() * canvas.height);
+        const a = Math.random() * 0.04;
+        if (Math.random() > 0.995) {
+            ctx.fillStyle = `rgba(255,255,255,${a * 0.6})`;
+            ctx.fillRect(x, y, 1, 1);
+        } else if (Math.random() > 0.9975) {
+            ctx.fillStyle = `rgba(0,0,0,${a * 0.9})`;
+            ctx.fillRect(x, y, 1, 1);
+        }
+    }
+
+    // vignette and fog to create depth zones: deeper darkness at top and bottom edges
+    const fog = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    fog.addColorStop(0, 'rgba(20,20,20,0.28)');
+    fog.addColorStop(0.25, 'rgba(20,20,20,0.06)');
+    fog.addColorStop(0.6, 'rgba(20,20,20,0.02)');
+    fog.addColorStop(1, 'rgba(8,8,8,0.36)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // remove UI/grid lines — replaced by subtle horizontal material cues above
 }
 
 function drawFragment(fragment) {
     ctx.save();
-
-    ctx.font = `${fragment.size}px "Arial Narrow", sans-serif`;
     ctx.textBaseline = 'top';
+    // visual tuning per state
+    const scaledSize = Math.max(10, Math.round(fragment.size * (fragment.scale || 1)));
+    ctx.font = `${scaledSize}px Inter, sans-serif`;
 
-    ctx.fillStyle = `rgba(239,235,224,${fragment.opacity})`;
+    // state-specific readability adjustments
+    let lines = [];
+    if (fragment.state === FRAGMENT_STATE.ACTIVE) {
+        // typewriter reveal: compute reveal progress and slice text
+        const progress = getFragmentProgress(fragment);
+        const chars = Math.max(1, Math.floor(fragment.text.length * progress));
+        const visibleText = fragment.text.slice(0, chars);
+        lines = wrapFragmentText(visibleText, fragment.maxWidth, fragment.size);
 
-    const lines = fragment.lines.length ? fragment.lines : wrapFragmentText(fragment.text, fragment.maxWidth, fragment.size);
+        ctx.fillStyle = `rgba(239,235,224,${Math.min(1, fragment.opacity || 1)})`;
+        ctx.lineHeight = fragment.lineHeight * 1.35;
+        fragment.lineHeight = Math.round(LAYOUT.lineHeight * 1.35);
+        ctx.shadowColor = 'rgba(0,0,0,0.36)';
+        ctx.shadowBlur = 2.6;
+    } else {
+        // foundation or queued: show full text but with calmer style
+        lines = fragment.lines.length ? fragment.lines : wrapFragmentText(fragment.text, fragment.maxWidth, fragment.size);
+        if (fragment.state === FRAGMENT_STATE.FOUNDATION) {
+            ctx.fillStyle = `rgba(239,235,224,${Math.max(0.18, fragment.opacity)})`;
+            fragment.lineHeight = LAYOUT.lineHeight;
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        } else {
+            // queued
+            ctx.fillStyle = `rgba(239,235,224,${Math.min(0.12, fragment.opacity)})`;
+            fragment.lineHeight = Math.round(LAYOUT.lineHeight * 0.98);
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    // compute block width for anchor shadow
+    let blockWidth = 0;
+    for (const line of lines) {
+        const w = ctx.measureText(line).width;
+        if (w > blockWidth) blockWidth = w;
+    }
+
+    // draw contact anchor shadow to ground the text
+    const anchorX = fragment.x + blockWidth * 0.5;
+    const anchorY = fragment.y + lines.length * fragment.lineHeight + 6;
+    let anchorAlpha = 0.08;
+    let anchorBlur = 8;
+    let anchorRy = 6;
+    if (fragment.state === FRAGMENT_STATE.FOUNDATION) {
+        anchorAlpha = 0.28;
+        anchorBlur = 10;
+        anchorRy = 8;
+    } else if (fragment.state === FRAGMENT_STATE.ACTIVE) {
+        anchorAlpha = 0.18;
+        anchorBlur = 6;
+        anchorRy = 6;
+    }
+
+    ctx.save();
+    ctx.fillStyle = `rgba(8,8,6,${anchorAlpha})`;
+    ctx.shadowColor = `rgba(0,0,0,${anchorAlpha})`;
+    ctx.shadowBlur = anchorBlur;
+    ctx.beginPath();
+    ctx.ellipse(anchorX, anchorY, Math.max(18, blockWidth * 0.42), anchorRy, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
 
     let cursorY = fragment.y;
-
     for (const line of lines) {
         ctx.fillText(line, fragment.x, cursorY);
         cursorY += fragment.lineHeight;
     }
 
+    if (fragment.clusterOrder === 0) {
+        ctx.font = '9px IBM Plex Mono, monospace';
+        ctx.fillStyle = 'rgba(209,191,88,0.3)';
+        ctx.fillText(`${fragment.sourceName || ''} · ${fragment.clusterKey || ''}`, fragment.x, fragment.y - 12);
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.restore();
+}
+
+function drawContentRelations() {
+    if (!fragments.length) return;
+
+    const chain = fragments.slice().sort((left, right) => left.revealDelay - right.revealDelay || left.y - right.y);
+    ctx.save();
+    ctx.lineWidth = 0.8;
+
+    for (let i = 1; i < chain.length; i++) {
+        const previous = chain[i - 1];
+        const current = chain[i];
+        // only draw sequential relations when there is meaningful token overlap
+        const overlap = tokenOverlapScore(previous.text, current.text);
+        if (overlap < 0.06) continue;
+        const relationOpacity = 0.04 + Math.min(0.12, current.opacity * 0.08) * overlap * 2.5;
+        const midX = (previous.x + current.x) * 0.5;
+        const midY = (previous.y + current.y) * 0.5 - 18;
+        ctx.strokeStyle = `rgba(209,191,88,${relationOpacity})`;
+        ctx.beginPath();
+        ctx.moveTo(previous.x + previous.maxWidth * 0.5, previous.y + previous.lineHeight * 0.6);
+        ctx.lineTo(midX, midY);
+        ctx.lineTo(current.x + current.maxWidth * 0.25, current.y + current.lineHeight * 0.6);
+        ctx.stroke();
+    }
+
+    const clustered = new Map();
+    for (const fragment of fragments) {
+        if (!clustered.has(fragment.clusterKey)) clustered.set(fragment.clusterKey, []);
+        clustered.get(fragment.clusterKey).push(fragment);
+    }
+
+    clustered.forEach(clusterFragments => {
+        if (clusterFragments.length < 2) return;
+
+        const sorted = clusterFragments.slice().sort((a, b) => a.targetY - b.targetY || a.targetX - b.targetX);
+        for (let i = 1; i < sorted.length; i++) {
+            const left = sorted[i - 1];
+            const right = sorted[i];
+            const overlap = tokenOverlapScore(left.text, right.text);
+            if (overlap < 0.08) continue;
+            ctx.strokeStyle = `rgba(209,191,88,${0.12 + overlap * 0.18})`;
+            ctx.beginPath();
+            ctx.moveTo(left.targetX + left.maxWidth * 0.25, left.targetY + left.lineHeight * 0.6);
+            ctx.lineTo((left.targetX + right.targetX) * 0.5, (left.targetY + right.targetY) * 0.5 - 12);
+            ctx.lineTo(right.targetX + right.maxWidth * 0.25, right.targetY + right.lineHeight * 0.6);
+            ctx.stroke();
+        }
+    });
+
     ctx.restore();
 }
 
 function getRelationAnchor(index) {
-    const total = Math.max(1, wikiFragments.length);
-    const rowStep = 108;
+    // compute small anchor positions for Wikipedia relation markers
+    const rowStep = Math.max(40, LAYOUT.spacingY * 0.5);
+    const total = Math.max(1, Math.min(LAYOUT.visibleWikiRelations, wikiFragments.length));
     const baseY = canvas.height - LAYOUT.marginBottom - index * rowStep;
-    const wave = Math.sin(animationTime * 0.03 + index * 0.9) * 8;
+    const wave = Math.sin(animationTime * 0.02 + index * 0.7) * 5;
 
     return {
-        x: canvas.width - 176 + Math.cos(animationTime * 0.02 + index) * 6,
+        x: canvas.width - 172 + Math.cos(animationTime * 0.018 + index) * 4,
         y: Math.max(96, baseY + wave),
         phase: index / total
     };
@@ -471,77 +896,107 @@ function getRelationAnchor(index) {
 
 function drawWikipediaRelations() {
     if (!wikiFragments.length) return;
+    // For each wiki fragment find the best matching fragment based on token overlap
+    const matches = [];
+    for (const wiki of wikiFragments) {
+        let best = null;
+        let bestScore = 0;
+        for (const frag of fragments) {
+            const score = tokenOverlapScore(wiki.text || wiki.term || '', frag.text || '');
+            if (score > bestScore) {
+                bestScore = score;
+                best = frag;
+            }
+        }
 
-    const visibleCount = Math.min(
-        LAYOUT.visibleWikiRelations,
-        wikiFragments.length,
-        fragments.length
-    );
+        if (best && bestScore > 0.10) {
+            matches.push({ wiki, frag: best, score: bestScore });
+        }
+    }
 
-    for (let i = 0; i < visibleCount; i++) {
-        const fragment = fragments[i];
-        const wiki = wikiFragments[i];
+    // limit visual clutter
+    matches.slice(0, LAYOUT.visibleWikiRelations).forEach((m, i) => {
         const anchor = getRelationAnchor(i);
-        const targetX = fragment.x - 12;
-        const targetY = fragment.y + fragment.lineHeight * 0.5;
-        const pulse = 0.12 + Math.sin(animationTime * 0.05 + i * 0.8) * 0.05;
+        const fragment = m.frag;
+        const wiki = m.wiki;
+        const targetX = fragment.x - 18;
+        const targetY = fragment.y + fragment.lineHeight * 0.45;
+        const pulse = 0.04 + m.score * 0.5;
 
         ctx.save();
-
-        ctx.strokeStyle = `rgba(209,191,88,${pulse})`;
-        ctx.lineWidth = 1.15;
+        ctx.strokeStyle = `rgba(209,191,88,${Math.min(0.34, pulse)})`;
+        ctx.lineWidth = 0.7;
         ctx.beginPath();
         ctx.moveTo(anchor.x, anchor.y);
-        ctx.lineTo((anchor.x + targetX) * 0.5, anchor.y + Math.sin(animationTime * 0.03 + i) * 4);
+        ctx.lineTo((anchor.x + targetX) * 0.5, anchor.y + 2);
         ctx.lineTo(targetX, targetY);
         ctx.stroke();
 
-        ctx.fillStyle = `rgba(209,191,88,${pulse + 0.1})`;
+        ctx.fillStyle = `rgba(209,191,88,${Math.min(0.34, pulse + 0.06)})`;
         ctx.beginPath();
-        ctx.arc(anchor.x, anchor.y, 1.8, 0, Math.PI * 2);
+        ctx.arc(anchor.x, anchor.y, 1.4, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = `rgba(209,191,88,${pulse + 0.14})`;
-        ctx.beginPath();
-        ctx.arc(targetX, targetY, 1.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.font = '11px "Arial Narrow", sans-serif';
-        ctx.fillStyle = `rgba(209,191,88,${0.45 + pulse})`;
-        ctx.fillText(wiki.term, anchor.x - 124, anchor.y - 5);
-
-        ctx.strokeStyle = `rgba(209,191,88,${pulse * 0.85})`;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(targetX - 16, targetY + 10);
-        ctx.lineTo(targetX + 16, targetY + 10);
-        ctx.stroke();
-
+        ctx.font = '10px IBM Plex Mono, monospace';
+        ctx.fillStyle = `rgba(209,191,88,${0.24 + pulse})`;
+        ctx.fillText(wiki.term, anchor.x - 118, anchor.y - 5);
         ctx.restore();
-    }
+    });
 }
 
 function render() {
-    animationTime += 0.005;
-    layoutTime += 0.005;
+    if (isPlaying) {
+        const step = 0.0035 * Math.max(0.12, Math.min(3, speedMultiplier));
+        animationTime += step;
+        layoutTime += step;
+    }
+
+    if (!renderStarted) {
+        console.log('render() running');
+        renderStarted = true;
+    }
 
     drawBackground();
 
+    // update state machine (activations, foundation alignment) before motion
+    manageFragmentStates();
+
+    // first update motion for all fragments according to their state
     fragments.forEach((fragment, index) => {
         applyMotion(fragment, index);
-        drawFragment(fragment);
     });
 
+    // then draw in Y order (top to bottom) so lower elements render on top
+    const drawOrder = fragments.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    for (const fragment of drawOrder) {
+        drawFragment(fragment);
+    }
+
+    drawContentRelations();
     drawWikipediaRelations();
 
     requestAnimationFrame(render);
 }
 
 async function bootstrap() {
-    fragments = await loadAllPdfFragments();
+    console.log('[Bootstrap] start');
+    setupUI();
+    try {
+        fragments = await loadAllPdfFragments();
+        console.log('[PDF] fragments:', fragments.length);
+    } catch (err) {
+        console.error('[Bootstrap] error loading fragments', err);
+        fragments = [];
+    }
+
+    console.log('[Bootstrap] loaded fragments count', fragments.length);
 
     if (!fragments.length) {
-        console.error('Keine PDF-Fragmente geladen');
+        console.warn('Keine PDF-Fragmente geladen — zeige Hintergrund und versuche Wikipedia-Relationen');
+        // Ensure background and wiki relations still run so the page isn't blank
+        layoutFragments();
+        fetchWikipediaRelations();
+        render();
         return;
     }
 
