@@ -21,6 +21,13 @@ const WIKI_TERMS = [
     `Bildhauerei`,
 ];
 
+const FORBIDDEN_TERMS = [
+    'flüchtling',
+    'flüchtlingsunterkunft',
+    'kinder',
+    'migration'
+];
+
 let fragments = [];
 let wikiFragments = [];
 
@@ -29,17 +36,17 @@ let layoutTime = 0;
 
 const LAYOUT = {
     spacingX: 280,
-    spacingY: 102,
+    spacingY: 118,
     marginX: 96,
     marginBottom: 112,
-    rowDelay: 1.15,
-    cellDelay: 0.08,
+    rowDelay: 1.35,
+    cellDelay: 0.1,
     riseDistance: 18,
-    driftX: 1.4,
-    driftY: 0.6,
+    driftX: 1.0,
+    driftY: 0.45,
     fragmentWidth: 330,
-    lineHeight: 24,
-    visibleWikiRelations: 5
+    lineHeight: 27,
+    visibleWikiRelations: 4
 };
 
 function resizeCanvas() {
@@ -89,6 +96,12 @@ function cleanText(text) {
     return text.replace(/\s+/g, ' ').trim();
 }
 
+function isForbiddenText(text) {
+    const normalized = cleanText(text).toLowerCase();
+
+    return FORBIDDEN_TERMS.some(term => normalized.includes(term));
+}
+
 function splitIntoSemanticUnits(text) {
     const normalized = cleanText(text);
     const sentenceMatches = normalized.match(/[^.!?;:]+[.!?;:]?|[^.!?;:]+/g) || [];
@@ -113,6 +126,11 @@ function splitIntoSemanticUnits(text) {
             : [sentence];
 
         for (const piece of pieces) {
+            if (isForbiddenText(piece)) {
+                pushCurrent();
+                continue;
+            }
+
             const candidate = current ? `${current} ${piece}` : piece;
 
             if (candidate.length <= maxLength) {
@@ -167,6 +185,10 @@ async function loadAllPdfFragments() {
         const extracted = await extractPdfFragments(source);
 
         for (const text of extracted) {
+            if (isForbiddenText(text)) {
+                continue;
+            }
+
             allFragments.push({
                 text,
                 source,
@@ -303,7 +325,7 @@ function applyMotion(fragment, index) {
         (1 - eased) * LAYOUT.riseDistance +
         driftY * eased * 0.45;
 
-    fragment.opacity = 0.1 + progress * 0.88;
+    fragment.opacity = 0.08 + progress * 0.84;
 }
 
 function drawBackground() {
@@ -342,18 +364,18 @@ function drawBackground() {
         ctx.stroke();
     }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.042)';
     ctx.beginPath();
     ctx.moveTo(0, canvas.height - 86.5);
     ctx.lineTo(canvas.width, canvas.height - 86.5);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
-    for (let i = 0; i < 7; i++) {
-        const x = 96 + i * 220;
+    ctx.strokeStyle = 'rgba(255,255,255,0.026)';
+    for (let i = 0; i < 5; i++) {
+        const x = 112 + i * 284;
         ctx.beginPath();
         ctx.moveTo(x, canvas.height - 86);
-        ctx.lineTo(x, canvas.height - 320 - (i % 2) * 26);
+        ctx.lineTo(x, canvas.height - 344 - (i % 2) * 18);
         ctx.stroke();
     }
 
@@ -390,23 +412,17 @@ function drawBackground() {
         ctx.fill();
     });
 
-    const grainStep = 22;
+    const grainStep = 24;
     for (let y = 0; y < canvas.height; y += grainStep) {
         for (let x = 0; x < canvas.width; x += grainStep) {
             const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
             const value = seed - Math.floor(seed);
 
             if (value > 0.75) {
-                ctx.fillStyle = `rgba(255,255,255,${0.012 + (value - 0.75) * 0.024})`;
+                ctx.fillStyle = `rgba(255,255,255,${0.01 + (value - 0.75) * 0.02})`;
                 ctx.fillRect(x, y, 2, 2);
             }
         }
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.012)';
-    for (let i = 0; i < 8; i++) {
-        const x = (canvas.width / 9) * (i + 0.35);
-        ctx.fillRect(x, 0, 1, canvas.height);
     }
 
     ctx.strokeStyle = 'rgba(255,255,255,0.015)';
