@@ -2,25 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Handlungsraum – Clean Field Mode</title>
+<title>Installation Engine</title>
 
 <style>
-  body { margin: 0; overflow: hidden; background: black; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+  }
   canvas { display: block; }
 </style>
 
-<!-- THREE.JS (OK, warning ignorierbar) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-
 </head>
 
 <body>
 
 <script>
-console.log("🧠 CLEAN FIELD MODE ACTIVE");
+console.log("🏛️ INSTALLATION ENGINE ONLINE");
 
 /* =========================
-   SCENE SETUP
+   RUNTIME STATE
 ========================= */
 const scene = new THREE.Scene();
 
@@ -31,96 +33,88 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.z = 80;
+camera.position.z = 90;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* LIGHT */
-const light = new THREE.PointLight(0xffffff, 2);
+/* LIGHT (soft installation glow) */
+const light = new THREE.PointLight(0xffffff, 1.5);
 light.position.set(50, 50, 50);
 scene.add(light);
 
-/* CORE (CENTER THEORY NODE) */
+/* CORE SYSTEM NODE */
 const core = new THREE.Mesh(
-  new THREE.SphereGeometry(6, 32, 32),
+  new THREE.SphereGeometry(7, 32, 32),
   new THREE.MeshBasicMaterial({ color: 0xff00ff })
 );
 scene.add(core);
 
-/* =========================
-   STATE
-========================= */
-const nodes = [];
-const velocity = [];
+/* STATE */
+let nodes = [];
+let velocity = [];
 
 /* =========================
-   YOUR PDF ENTITIES (NO PARSING)
+   DATA LOADER (JSON ONLY)
 ========================= */
-const FILES = [
-  "handlungsraum.pdf",
-  "kunstraum.pdf"
-];
+async function loadData(file) {
+  const res = await fetch("./data/" + file);
+  return await res.json();
+}
 
 /* =========================
-   BUILD FIELD (SAFE VERSION)
+   FIELD BUILDER (SEMANTIC SPACE)
 ========================= */
-function buildField() {
+function buildField(data, offsetX) {
 
-  FILES.forEach((file, i) => {
+  data.nodes.forEach((word, i) => {
 
-    // main node
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(4, 24, 24),
+      new THREE.SphereGeometry(2.2, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: i === 0 ? 0x00ffff : 0xffff00
+        color: new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
       })
     );
 
     mesh.position.set(
-      (i - 0.5) * 40,
-      0,
-      0
+      offsetX + (Math.random() - 0.5) * 50,
+      (Math.random() - 0.5) * 50,
+      (Math.random() - 0.5) * 50
     );
 
+    mesh.userData = {
+      text: word,
+      group: data.title
+    };
+
     scene.add(mesh);
+
     nodes.push(mesh);
     velocity.push(new THREE.Vector3());
-
-    // EXTRA: satellite nodes (IMPORTANT!)
-    for (let j = 0; j < 8; j++) {
-
-      const small = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 12, 12),
-        new THREE.MeshBasicMaterial({
-          color: 0xffffff
-        })
-      );
-
-      small.position.set(
-        mesh.position.x + (Math.random() - 0.5) * 20,
-        mesh.position.y + (Math.random() - 0.5) * 20,
-        mesh.position.z + (Math.random() - 0.5) * 20
-      );
-
-      scene.add(small);
-      nodes.push(small);
-      velocity.push(new THREE.Vector3());
-    }
   });
 
-  console.log("🧬 expanded field nodes:", nodes.length);
+  console.log("🧬 loaded group:", data.title);
 }
 
 /* =========================
-   START
+   BOOT SEQUENCE
 ========================= */
-buildField();
-animate();
+async function start() {
+
+  const kunstraum = await loadData("kunstraum.json");
+  const handlungsraum = await loadData("handlungsraum.json");
+
+  buildField(kunstraum, -30);
+  buildField(handlungsraum, 30);
+
+  animate();
+}
+
+start();
 
 /* =========================
-   LOOP
+   GRAVITY ENGINE
 ========================= */
 function animate() {
 
@@ -130,6 +124,7 @@ function animate() {
 
   nodes.forEach((n, i) => {
 
+    // attraction to core
     const dir = new THREE.Vector3()
       .subVectors(core.position, n.position)
       .multiplyScalar(0.01);
@@ -139,8 +134,9 @@ function animate() {
 
     n.position.add(velocity[i]);
 
+    // breathing system
     n.scale.setScalar(
-      1 + Math.sin(Date.now()*0.002 + i) * 0.3
+      1 + Math.sin(Date.now()*0.002 + i) * 0.25
     );
   });
 
