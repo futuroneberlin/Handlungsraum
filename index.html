@@ -4,37 +4,37 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>HANDLUNGSRAUM</title>
+<title>HANDLUNGSRAUM — EXHIBITION AI REVOLUTION</title>
 
 <style>
-*{
+html, body{
   margin:0;
   padding:0;
-  box-sizing:border-box;
-}
-
-html,body{
+  overflow:hidden;
   width:100%;
   height:100%;
-  overflow:hidden;
   background:#000;
   font-family:Arial, Helvetica, sans-serif;
-  cursor:none;
 }
 
-/* VIDEO BACKGROUND */
+/* THREE CANVAS */
+canvas{
+  display:block;
+  position:fixed;
+  inset:0;
+  z-index:1;
+}
+
+/* LIVE BAUSTELLE */
 #bgVideo{
   position:fixed;
   inset:0;
   width:100%;
   height:100%;
   object-fit:cover;
-  filter:
-    contrast(1.2)
-    brightness(0.25)
-    saturate(0)
-    blur(1px);
-  z-index:-5;
+  opacity:0.18;
+  filter:contrast(1.2) saturate(0) brightness(0.45);
+  z-index:0;
 }
 
 /* NOISE */
@@ -42,296 +42,343 @@ html,body{
   position:fixed;
   inset:0;
   pointer-events:none;
+  z-index:5;
   opacity:.08;
-  mix-blend-mode:screen;
-  z-index:50;
   background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+  mix-blend-mode:screen;
 }
 
-/* CHAOS OVERLAY */
-#overlay{
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  z-index:40;
-}
-
-/* MAIN */
-#world{
-  position:fixed;
-  inset:0;
-  z-index:10;
-}
-
-/* TYPO LAYER */
-#textLayer{
-  position:fixed;
-  inset:0;
-  overflow:hidden;
-  z-index:30;
-  pointer-events:none;
-}
-
-/* FLOATING WORDS */
+/* WORD STREAM */
 .word{
   position:absolute;
   color:#ffe600;
   font-weight:900;
   text-transform:uppercase;
-  letter-spacing:.08em;
   white-space:nowrap;
+  pointer-events:none;
   user-select:none;
+  letter-spacing:2px;
   mix-blend-mode:screen;
   text-shadow:
-    0 0 10px rgba(255,230,0,.6),
-    0 0 30px rgba(255,230,0,.4);
-  transition:
-    transform .1s linear,
-    opacity .3s linear;
+    0 0 10px rgba(255,230,0,.7),
+    0 0 20px rgba(255,230,0,.5);
+  transition:transform .15s linear;
+  z-index:3;
 }
 
 /* TITLE */
 #title{
   position:fixed;
-  top:24px;
-  left:24px;
-  z-index:60;
+  top:20px;
+  left:20px;
   color:#fff;
+  z-index:10;
   font-size:14px;
-  letter-spacing:.3em;
+  letter-spacing:4px;
   line-height:1.6;
-  text-transform:uppercase;
-  mix-blend-mode:difference;
+  opacity:.8;
 }
 
-/* MANIFEST */
-#manifest{
+/* SCANNER */
+#scan{
   position:fixed;
-  right:30px;
-  bottom:30px;
-  width:380px;
-  max-width:40vw;
-  z-index:60;
-  color:#fff;
-  font-size:12px;
-  line-height:1.7;
-  opacity:.75;
-  overflow:auto;
-  max-height:70vh;
-  mix-blend-mode:screen;
+  inset:0;
+  pointer-events:none;
+  z-index:6;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.02) 0px,
+      rgba(255,255,255,.02) 2px,
+      transparent 2px,
+      transparent 4px
+    );
+  animation:scan 8s linear infinite;
 }
 
-/* FLASH */
-.flash{
-  animation:flash .12s linear;
+@keyframes scan{
+  from{transform:translateY(-50px);}
+  to{transform:translateY(50px);}
 }
-
-@keyframes flash{
-  0%{ opacity:1; }
-  100%{ opacity:.3; }
-}
-
 </style>
 </head>
 
 <body>
 
-<!-- BACKGROUND VIDEO -->
+<!-- PLATTENBAU / BAUSTELLE VIDEO -->
 <video autoplay muted loop playsinline id="bgVideo">
-  <source src="https://cdn.coverr.co/videos/coverr-construction-workers-1567841597895?download=1080p" type="video/mp4">
+  <source src="https://cdn.coverr.co/videos/coverr-construction-site-1567845725402?download=1080p" type="video/mp4">
 </video>
 
-<!-- NOISE -->
 <div id="noise"></div>
+<div id="scan"></div>
 
-<!-- CANVAS -->
-<canvas id="world"></canvas>
-
-<!-- TEXT -->
-<div id="textLayer"></div>
-
-<!-- CHAOS -->
-<canvas id="overlay"></canvas>
-
-<!-- UI -->
 <div id="title">
-HANDLUNGSRAUM<br>
-EXHIBITION AI REVOLUTION<br>
-BEUYS MODE ACTIVE
+HANDLUNGSRAUM ÆSTHETIC PRACTICE<br>
+VISITOR = FORCE FIELD<br>
+TEXT = MATERIAL<br>
+SPACE = SOCIAL SCULPTURE
 </div>
 
-<div id="manifest">
-The Handlungsraum of aesthetic practice dissolves the fixed art object into a living process.
-The visitor becomes force-field, disturbance, sculptor and resonance body.
-Meaning emerges through friction, interaction, instability and temporal transformation.
-The artwork is not consumed — it unfolds through action.
-</div>
+<script type="module">
 
-<script>
+/* =========================
+   IMPORT MODERN THREE
+========================= */
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
-console.log("🟡 HANDLUNGSRAUM ENGINE ONLINE");
+console.log("🧠 HANDLUNGSRAUM ENGINE ONLINE");
 
-/* ======================================================
-   TEXT DATABASE
-====================================================== */
+/* =========================
+   MASSIVE TEXT SOURCE
+========================= */
 
-const textData = `
+const theoryText = `
 
-HANDLUNGSRAUM
-SOZIALE PLASTIK
-RESONANZ
-INTERAKTION
-FORMBARKEIT
-TRANSFORMATION
-WIDERSTAND
-VERÄNDERBARKEIT
-KÖRPER
-HANDLUNG
-ZEIT
-KRAFT
-VERMÖGEN
-PROCESS
-SCULPTURE
-RITUAL
-BEUYS
-DYNAMIK
-OFFENHEIT
-UNFERTIG
-FREIHEIT
-REIBUNG
-AESTHETIC PRACTICE
-SOCIAL BODY
-ACTIONAL SPACE
-ENERGETIC FIELD
-COLLECTIVE SPACE
-NON STANDARDIZATION
-DISRUPTION
-ONTOLOGICAL INTEGRITY
-PROCESSUAL SPACE
-TEMPORAL FIELD
-RESONANCE INSTEAD OF RESULT
-ART AS ACTION
-LIVING SYSTEM
-FIELD OF TENSION
-SPATIAL MEMORY
-RHYTHM
-MOVEMENT
-COLLISION
-PARTICIPATION
-DESTRUCTION
-WAVE
-NOISE
-FIRE
-WIND
-WATER
-BREATH
-EXPERIENCE
-IMMERSION
+THE HANDLUNGSRAUM OF AESTHETIC PRACTICE
+
+The artwork loses fixed object identity and dissolves into a living process.
+Transformation.
+Resistance.
+Resonance instead of result.
+Social sculpture.
+The visitor becomes force.
+The room becomes body.
+The sculpture becomes relation.
+
+FROM VOLUME TO ACTION.
+FROM OBJECT TO TIME.
+FROM MATERIAL TO EXPERIENCE.
+FROM OBSERVER TO PARTICIPANT.
+
+KRAFT.
+VERMÖGEN.
+INTERAKTION.
+REIBUNG.
+WIDERSTAND.
+FORMBARKEIT.
+VERÄNDERBARKEIT.
+ZEIT.
+KÖRPER.
+HANDLUNG.
+SOZIALE INFRASTRUKTUR.
+PROCESS.
+BECOMING.
+OPEN SYSTEM.
+NON STANDARDIZATION.
+UNFINISHED FUTURE.
+COLLECTIVE TENSION.
+MOVEMENT.
+DISRUPTION.
+FIELD.
+ENERGY.
+TRANSFORMATION.
+
+The handlungsraum is not an archive.
+It is not a product.
+It is not an institution.
+It is an unstable atmospheric field.
+
+Visitors deform the semantic structure through movement.
+Language collapses and rebuilds itself.
+Words become architecture.
+Architecture becomes noise.
+Noise becomes sculpture.
+
 `;
 
-const words = textData
+const WORDS = theoryText
   .split(/\s+/)
-  .filter(Boolean);
+  .filter(w => w.length > 2);
 
-/* ======================================================
-   TEXT PARTICLES
-====================================================== */
+/* =========================
+   THREE SCENE
+========================= */
 
-const textLayer = document.getElementById("textLayer");
+const scene = new THREE.Scene();
 
-const particles = [];
+const camera = new THREE.PerspectiveCamera(
+  65,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  3000
+);
 
-for(let i=0;i<240;i++){
+camera.position.z = 220;
 
-  const el = document.createElement("div");
-  el.className = "word";
-
-  const word = words[Math.floor(Math.random()*words.length)];
-
-  el.innerText = word;
-
-  const obj = {
-    el,
-    x: Math.random()*window.innerWidth,
-    y: Math.random()*window.innerHeight,
-    z: Math.random()*1000,
-    vx:(Math.random()-.5)*2,
-    vy:(Math.random()-.5)*2,
-    size:12 + Math.random()*40,
-    rot:Math.random()*360,
-    life:Math.random()*1000
-  };
-
-  el.style.fontSize = obj.size + "px";
-
-  textLayer.appendChild(el);
-
-  particles.push(obj);
-}
-
-/* ======================================================
-   MOUSE FORCE FIELD
-====================================================== */
-
-const mouse = {
-  x:window.innerWidth/2,
-  y:window.innerHeight/2
-};
-
-window.addEventListener("mousemove",(e)=>{
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
+const renderer = new THREE.WebGLRenderer({
+  antialias:true,
+  alpha:true
 });
 
-/* ======================================================
-   CAMERA INTERACTION
-====================================================== */
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-let cameraData = null;
+document.body.appendChild(renderer.domElement);
 
-async function initCamera(){
+/* =========================
+   LIGHT
+========================= */
 
-  try{
+const ambient = new THREE.AmbientLight(0x404040, 1.4);
+scene.add(ambient);
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:true
-    });
+const lightA = new THREE.PointLight(0xffdd00, 10, 1200);
+lightA.position.set(300,200,200);
+scene.add(lightA);
 
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    video.play();
+const lightB = new THREE.PointLight(0xff2200, 6, 1200);
+lightB.position.set(-200,-100,100);
+scene.add(lightB);
 
-    cameraData = video;
+/* =========================
+   VISITOR FORCE
+========================= */
 
-    console.log("📷 CAMERA ACTIVE");
+const mouse = new THREE.Vector2();
 
-  }catch(err){
+window.addEventListener("mousemove", e => {
 
-    console.log("❌ camera denied");
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+});
+
+/* =========================
+   SCULPTURAL PARTICLES
+========================= */
+
+const particles = [];
+const velocities = [];
+
+function createChaosGeometry(size){
+
+  const geo = new THREE.IcosahedronGeometry(size, 4);
+
+  const pos = geo.attributes.position;
+
+  for(let i=0;i<pos.count;i++){
+
+    let x = pos.getX(i);
+    let y = pos.getY(i);
+    let z = pos.getZ(i);
+
+    const noise =
+      Math.sin(x*0.3) * 4 +
+      Math.cos(y*0.4) * 4 +
+      (Math.random()-0.5) * 8;
+
+    pos.setXYZ(
+      i,
+      x + noise,
+      y + noise * 0.5,
+      z + noise
+    );
   }
+
+  geo.computeVertexNormals();
+
+  return geo;
 }
 
-initCamera();
+/* =========================
+   CREATE MONSTROUS FORMS
+========================= */
 
-/* ======================================================
-   SOUND ENGINE
-====================================================== */
+for(let i=0;i<120;i++){
+
+  const geometry = createChaosGeometry(
+    Math.random() * 6 + 2
+  );
+
+  const material = new THREE.MeshStandardMaterial({
+    color:new THREE.Color(
+      `hsl(${40 + Math.random()*30},100%,50%)`
+    ),
+    roughness:1,
+    metalness:0.1,
+    wireframe:Math.random() > 0.82,
+    emissive:new THREE.Color(
+      `hsl(${40 + Math.random()*30},100%,10%)`
+    )
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+
+  mesh.position.set(
+    (Math.random()-0.5)*900,
+    (Math.random()-0.5)*500,
+    (Math.random()-0.5)*500
+  );
+
+  mesh.rotation.set(
+    Math.random()*Math.PI,
+    Math.random()*Math.PI,
+    Math.random()*Math.PI
+  );
+
+  scene.add(mesh);
+
+  particles.push(mesh);
+
+  velocities.push(
+    new THREE.Vector3(
+      (Math.random()-0.5)*0.5,
+      (Math.random()-0.5)*0.5,
+      (Math.random()-0.5)*0.5
+    )
+  );
+}
+
+/* =========================
+   MASSIVE WORD STREAM
+========================= */
+
+const wordElements = [];
+
+for(let i=0;i<WORDS.length;i++){
+
+  const div = document.createElement("div");
+
+  div.className = "word";
+  div.innerText = WORDS[i];
+
+  div.style.left = Math.random()*window.innerWidth + "px";
+  div.style.top = Math.random()*window.innerHeight + "px";
+
+  div.style.fontSize =
+    (12 + Math.random()*40) + "px";
+
+  document.body.appendChild(div);
+
+  wordElements.push({
+    el:div,
+    x:Math.random()*window.innerWidth,
+    y:Math.random()*window.innerHeight,
+    vx:(Math.random()-0.5)*3,
+    vy:(Math.random()-0.5)*3
+  });
+}
+
+/* =========================
+   AUDIO NOISE
+========================= */
 
 let audioStarted = false;
 
-window.addEventListener("click",()=>{
+window.addEventListener("click", () => {
 
   if(audioStarted) return;
 
   audioStarted = true;
 
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const ctx = new AudioContext();
 
   const noise = ctx.createBufferSource();
 
   const buffer = ctx.createBuffer(
     1,
-    ctx.sampleRate * 3,
+    ctx.sampleRate * 2,
     ctx.sampleRate
   );
 
@@ -349,7 +396,7 @@ window.addEventListener("click",()=>{
   filter.frequency.value = 120;
 
   const gain = ctx.createGain();
-  gain.gain.value = .05;
+  gain.gain.value = 0.08;
 
   noise.connect(filter);
   filter.connect(gain);
@@ -357,155 +404,153 @@ window.addEventListener("click",()=>{
 
   noise.start();
 
-  console.log("🔊 NOISE ENGINE ACTIVE");
-
 });
 
-/* ======================================================
-   CHAOS OVERLAY
-====================================================== */
-
-const overlay = document.getElementById("overlay");
-const octx = overlay.getContext("2d");
-
-function resizeOverlay(){
-  overlay.width = innerWidth;
-  overlay.height = innerHeight;
-}
-
-resizeOverlay();
-
-window.addEventListener("resize",resizeOverlay);
-
-/* ======================================================
-   MAIN ENGINE
-====================================================== */
+/* =========================
+   ANIMATION
+========================= */
 
 function animate(){
 
   requestAnimationFrame(animate);
 
-  octx.clearRect(0,0,overlay.width,overlay.height);
+  const time = performance.now() * 0.001;
 
-  const t = performance.now() * .001;
+  camera.position.x +=
+    ((mouse.x * 120) - camera.position.x) * 0.03;
+
+  camera.position.y +=
+    ((mouse.y * 80) - camera.position.y) * 0.03;
+
+  camera.lookAt(scene.position);
+
+  /* VISITOR FORCE FIELD */
 
   particles.forEach((p,i)=>{
 
-    const dx = mouse.x - p.x;
-    const dy = mouse.y - p.y;
+    const target = new THREE.Vector3(
+      mouse.x * 300,
+      mouse.y * 180,
+      0
+    );
 
-    const dist = Math.sqrt(dx*dx + dy*dy);
+    const dir = target.clone().sub(p.position);
 
-    /* FORCE FIELD */
+    const dist = dir.length();
 
-    if(dist < 260){
+    if(dist < 300){
 
-      p.vx -= dx * 0.0008;
-      p.vy -= dy * 0.0008;
+      dir.normalize();
 
-      p.el.classList.add("flash");
+      velocities[i].add(
+        dir.multiplyScalar(0.04)
+      );
 
-    }else{
-      p.el.classList.remove("flash");
     }
 
-    /* CHAOS */
+    velocities[i].multiplyScalar(0.985);
 
-    p.vx += Math.sin(t + i) * 0.02;
-    p.vy += Math.cos(t + i) * 0.02;
+    p.position.add(velocities[i]);
 
-    p.vx *= .98;
-    p.vy *= .98;
+    p.rotation.x += 0.003;
+    p.rotation.y += 0.004;
 
-    p.x += p.vx;
-    p.y += p.vy;
-
-    /* SCREEN WRAP */
-
-    if(p.x < -300) p.x = innerWidth + 300;
-    if(p.x > innerWidth + 300) p.x = -300;
-
-    if(p.y < -300) p.y = innerHeight + 300;
-    if(p.y > innerHeight + 300) p.y = -300;
-
-    /* TYPO DESTRUCTION */
+    /* LIVING DEFORMATION */
 
     const scale =
       1 +
-      Math.sin(t*2+i)*0.4 +
-      (260-dist)/260;
+      Math.sin(time*2 + i) * 0.25;
 
-    const blur =
-      Math.max(0, (120-dist)/40);
-
-    p.rot += p.vx * 0.5;
-
-    p.el.style.transform = `
-      translate(${p.x}px, ${p.y}px)
-      scale(${scale})
-      rotate(${p.rot}deg)
-    `;
-
-    p.el.style.filter = `
-      blur(${blur}px)
-    `;
-
-    p.el.style.opacity =
-      Math.max(.2, 1 - dist/500);
-
-    /* CONNECTIONS */
-
-    if(i % 5 === 0){
-
-      octx.beginPath();
-
-      octx.moveTo(p.x,p.y);
-
-      octx.lineTo(
-        mouse.x,
-        mouse.y
-      );
-
-      octx.strokeStyle =
-        "rgba(255,230,0,.06)";
-
-      octx.lineWidth = 1;
-
-      octx.stroke();
-    }
+    p.scale.set(
+      scale,
+      scale * (1 + velocities[i].length()),
+      scale
+    );
 
   });
 
-  /* GENERATIVE CONSTRUCTION LINES */
+  /* WORD DESTRUCTION */
 
-  for(let i=0;i<40;i++){
+  wordElements.forEach((w,i)=>{
 
-    octx.beginPath();
+    w.x += w.vx;
+    w.y += w.vy;
 
-    octx.moveTo(
-      Math.random()*innerWidth,
-      Math.random()*innerHeight
-    );
+    const dx =
+      mouse.x * window.innerWidth - w.x;
 
-    octx.lineTo(
-      Math.random()*innerWidth,
-      Math.random()*innerHeight
-    );
+    const dy =
+      mouse.y * window.innerHeight - w.y;
 
-    octx.strokeStyle =
-      `rgba(255,255,255,${Math.random()*0.03})`;
+    const d = Math.sqrt(dx*dx + dy*dy);
 
-    octx.stroke();
-  }
+    if(d < 250){
 
+      w.vx += dx * 0.0008;
+      w.vy += dy * 0.0008;
+
+      w.el.style.transform =
+        `scale(${1.4 + Math.sin(time*6+i)*0.3})
+         rotate(${Math.sin(time+i)*20}deg)`;
+
+      w.el.style.opacity = "1";
+
+    } else {
+
+      w.el.style.opacity = ".35";
+    }
+
+    w.vx *= 0.99;
+    w.vy *= 0.99;
+
+    /* SCREEN WRAP */
+
+    if(w.x < -400) w.x = window.innerWidth+200;
+    if(w.x > window.innerWidth+400) w.x = -200;
+
+    if(w.y < -100) w.y = window.innerHeight+100;
+    if(w.y > window.innerHeight+100) w.y = -100;
+
+    w.el.style.left = w.x + "px";
+    w.el.style.top = w.y + "px";
+
+  });
+
+  /* LIGHT MOVEMENT */
+
+  lightA.position.x =
+    Math.sin(time*0.4) * 400;
+
+  lightA.position.z =
+    Math.cos(time*0.4) * 400;
+
+  renderer.render(scene,camera);
 }
 
 animate();
+
+/* =========================
+   RESIZE
+========================= */
+
+window.addEventListener("resize",()=>{
+
+  camera.aspect =
+    window.innerWidth / window.innerHeight;
+
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+  );
+});
 
 </script>
 
 </body>
 </html>
+
 
 
 
