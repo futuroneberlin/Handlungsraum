@@ -2,257 +2,506 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>FORMKUNST — SCULPTURAL HANDLUNGSRAUM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>HANDLUNGSRAUM</title>
 
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body, html { 
-    margin: 0; 
-    overflow: hidden; 
-    background: #000000; 
-    width: 100%; 
-    height: 100%;
-    font-family: 'Arial Black', 'Impact', sans-serif;
-  }
-  canvas { display: block; width: 100vw; height: 100vh; }
-</style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+html,body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#000;
+  font-family:Arial, Helvetica, sans-serif;
+  cursor:none;
+}
+
+/* VIDEO BACKGROUND */
+#bgVideo{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  filter:
+    contrast(1.2)
+    brightness(0.25)
+    saturate(0)
+    blur(1px);
+  z-index:-5;
+}
+
+/* NOISE */
+#noise{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.08;
+  mix-blend-mode:screen;
+  z-index:50;
+  background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+}
+
+/* CHAOS OVERLAY */
+#overlay{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:40;
+}
+
+/* MAIN */
+#world{
+  position:fixed;
+  inset:0;
+  z-index:10;
+}
+
+/* TYPO LAYER */
+#textLayer{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  z-index:30;
+  pointer-events:none;
+}
+
+/* FLOATING WORDS */
+.word{
+  position:absolute;
+  color:#ffe600;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  white-space:nowrap;
+  user-select:none;
+  mix-blend-mode:screen;
+  text-shadow:
+    0 0 10px rgba(255,230,0,.6),
+    0 0 30px rgba(255,230,0,.4);
+  transition:
+    transform .1s linear,
+    opacity .3s linear;
+}
+
+/* TITLE */
+#title{
+  position:fixed;
+  top:24px;
+  left:24px;
+  z-index:60;
+  color:#fff;
+  font-size:14px;
+  letter-spacing:.3em;
+  line-height:1.6;
+  text-transform:uppercase;
+  mix-blend-mode:difference;
+}
+
+/* MANIFEST */
+#manifest{
+  position:fixed;
+  right:30px;
+  bottom:30px;
+  width:380px;
+  max-width:40vw;
+  z-index:60;
+  color:#fff;
+  font-size:12px;
+  line-height:1.7;
+  opacity:.75;
+  overflow:auto;
+  max-height:70vh;
+  mix-blend-mode:screen;
+}
+
+/* FLASH */
+.flash{
+  animation:flash .12s linear;
+}
+
+@keyframes flash{
+  0%{ opacity:1; }
+  100%{ opacity:.3; }
+}
+
+</style>
 </head>
 
 <body>
 
+<!-- BACKGROUND VIDEO -->
+<video autoplay muted loop playsinline id="bgVideo">
+  <source src="https://cdn.coverr.co/videos/coverr-construction-workers-1567841597895?download=1080p" type="video/mp4">
+</video>
+
+<!-- NOISE -->
+<div id="noise"></div>
+
+<!-- CANVAS -->
+<canvas id="world"></canvas>
+
+<!-- TEXT -->
+<div id="textLayer"></div>
+
+<!-- CHAOS -->
+<canvas id="overlay"></canvas>
+
+<!-- UI -->
+<div id="title">
+HANDLUNGSRAUM<br>
+EXHIBITION AI REVOLUTION<br>
+BEUYS MODE ACTIVE
+</div>
+
+<div id="manifest">
+The Handlungsraum of aesthetic practice dissolves the fixed art object into a living process.
+The visitor becomes force-field, disturbance, sculptor and resonance body.
+Meaning emerges through friction, interaction, instability and temporal transformation.
+The artwork is not consumed — it unfolds through action.
+</div>
+
 <script>
-console.log("🪨 SCULPTURAL MATRIX ACTIVE — NO PERFECT SPHERES");
 
-/* =========================
-   1. SETUP & BILDHAUERISCHER RAUM
-========================= */
-const scene = new THREE.Scene();
+console.log("🟡 HANDLUNGSRAUM ENGINE ONLINE");
 
-// Tiefenwirkung im virtuellen Atelier maximieren
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 200;
+/* ======================================================
+   TEXT DATABASE
+====================================================== */
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-document.body.appendChild(renderer.domElement);
+const textData = `
 
-/* RADIKALES LICHT-SCHATTEN-FELD */
-// Gedimmtes Raumlicht, gepaart mit einer aggressiven gelben Lichtquelle für extreme Kantenbetonung
-const ambientLight = new THREE.AmbientLight(0x111111);
-scene.add(ambientLight);
+HANDLUNGSRAUM
+SOZIALE PLASTIK
+RESONANZ
+INTERAKTION
+FORMBARKEIT
+TRANSFORMATION
+WIDERSTAND
+VERÄNDERBARKEIT
+KÖRPER
+HANDLUNG
+ZEIT
+KRAFT
+VERMÖGEN
+PROCESS
+SCULPTURE
+RITUAL
+BEUYS
+DYNAMIK
+OFFENHEIT
+UNFERTIG
+FREIHEIT
+REIBUNG
+AESTHETIC PRACTICE
+SOCIAL BODY
+ACTIONAL SPACE
+ENERGETIC FIELD
+COLLECTIVE SPACE
+NON STANDARDIZATION
+DISRUPTION
+ONTOLOGICAL INTEGRITY
+PROCESSUAL SPACE
+TEMPORAL FIELD
+RESONANCE INSTEAD OF RESULT
+ART AS ACTION
+LIVING SYSTEM
+FIELD OF TENSION
+SPATIAL MEMORY
+RHYTHM
+MOVEMENT
+COLLISION
+PARTICIPATION
+DESTRUCTION
+WAVE
+NOISE
+FIRE
+WIND
+WATER
+BREATH
+EXPERIENCE
+IMMERSION
+`;
 
-const industrialLight = new THREE.PointLight(0xffde00, 3, 500);
-industrialLight.position.set(120, 150, 100);
-scene.add(industrialLight);
+const words = textData
+  .split(/\s+/)
+  .filter(Boolean);
 
-const secondaryLight = new THREE.PointLight(0xffffff, 0.5, 300);
-secondaryLight.position.set(-100, -100, 50);
-scene.add(secondaryLight);
+/* ======================================================
+   TEXT PARTICLES
+====================================================== */
 
-/* =========================
-   2. DAS DATEN-MANIFEST (DEINE THEORIE)
-========================= */
-const concepts = [
-  { text: "WIDERSTAND", size: 14 },
-  { text: "FORMBARKEIT", size: 12 },
-  { text: "VERÄNDERBARKEIT", size: 13 },
-  { text: "KÖRPER", size: 15 },
-  { text: "HANDLUNG", size: 14 },
-  { text: "ZEIT", size: 11 },
-  { text: "INTERAKTION", size: 12 },
-  { text: "RESONANZ", size: 13 },
-  { text: "KRAFT", size: 16 },
-  { text: "VERMÖGEN", size: 12 },
-  { text: "SOZIALE PLASTIK", size: 11 },
-  { text: "UNTERBRECHUNG", size: 12 }
-];
+const textLayer = document.getElementById("textLayer");
 
-const nodes = [];
-const velocity = [];
-const mouse = new THREE.Vector3(0, 0, 0);
+const particles = [];
 
-/* =========================
-   3. GEOMETRIE-MEIẞELN: RAUHE STEINKÖRPER
-========================= */
-// Erzeugt unregelmäßige, unperfekte, bildhauerische Polyeder statt perfekter Kugeln
-function createSculpturalMassGeometry(baseSize) {
-  // Wir starten mit einem unregelmäßigen 20-Flächler (Ikosaeder)
-  const geom = new THREE.IcosahedronGeometry(baseSize, 1); 
-  
-  // Mathematischer Meißel: Wir verformen die Eckpunkte (Vertices) zufällig, um Kanten und Brüche zu simulieren
-  const pos = geom.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
-    
-    // Perlin-ähnliches Rauschen simuliert Schläge auf das Gestein
-    const noise = (Math.random() - 0.5) * (baseSize * 0.45);
-    
-    pos.setXYZ(
-      i, 
-      x + noise + Math.sin(y * 0.5) * 2, 
-      y + noise, 
-      z + noise + Math.cos(x * 0.5) * 2
-    );
-  }
-  geom.computeVertexNormals(); // Berechnet die Kantenbeleuchtung neu für raue Oberflächen
-  return geom;
-}
+for(let i=0;i<240;i++){
 
-/* =========================
-   4. TEXT-MAPPING (TYPOGRAFIE AUF MATERIAL)
-========================= */
-// Generiert eine brutalistische, gelb-schwarze Textur im Arbeitsspeicher, die auf den Stein projiziert wird
-function createContrastedTextTexture(text) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 512;
-  canvas.height = 128;
-  
-  // Tiefschwarzer Block als Materialbasis
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // Roher, fetter Textüberzug in Warngelb
-  ctx.fillStyle = '#FFDE00';
-  ctx.font = 'bold 54px Arial, Impact, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  // Text wird leicht verzerrt aufgetragen für handwerklichen Charakter
-  ctx.setTransform(1, (Math.random()-0.5)*0.1, 0, 1, 0, 0);
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
-}
+  const el = document.createElement("div");
+  el.className = "word";
 
-/* =========================
-   5. SKULPTUR SPRAWNEN (GENESE IM RAUM)
-========================= */
-function spawnSculptureNode(concept) {
-  const geometry = createSculpturalMassGeometry(concept.size);
-  const texture = createContrastedTextTexture(concept.text);
-  
-  // Das Material ist rauh, uneben und reagiert massiv auf das Licht im Raum
-  const material = new THREE.MeshStandardMaterial({
-    map: texture,
-    roughness: 0.8,
-    metalness: 0.2,
-    bumpMap: texture, // Der Text gräbt sich reliefartig dreidimensional in den Stein ein
-    bumpScale: 1.5
-  });
-  
-  const mesh = new THREE.Mesh(geometry, material);
-  
-  // Verteilung im volumetrischen Handlungsraum
-  mesh.position.set(
-    (Math.random() - 0.5) * 180,
-    (Math.random() - 0.5) * 120,
-    (Math.random() - 0.5) * 100
-  );
-  
-  // Individuelle Achsenneigung der Steine
-  mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-  
-  mesh.userData = {
-    rotationSpeed: {
-      x: (Math.random() - 0.5) * 0.01,
-      y: (Math.random() - 0.5) * 0.01
-    },
-    originalSize: concept.size,
-    seed: Math.random() * 50
+  const word = words[Math.floor(Math.random()*words.length)];
+
+  el.innerText = word;
+
+  const obj = {
+    el,
+    x: Math.random()*window.innerWidth,
+    y: Math.random()*window.innerHeight,
+    z: Math.random()*1000,
+    vx:(Math.random()-.5)*2,
+    vy:(Math.random()-.5)*2,
+    size:12 + Math.random()*40,
+    rot:Math.random()*360,
+    life:Math.random()*1000
   };
-  
-  scene.add(mesh);
-  nodes.push(mesh);
-  velocity.push(new THREE.Vector3());
+
+  el.style.fontSize = obj.size + "px";
+
+  textLayer.appendChild(el);
+
+  particles.push(obj);
 }
 
-// Initialisiere die geformte Praxis
-concepts.forEach(spawnSculptureNode);
+/* ======================================================
+   MOUSE FORCE FIELD
+====================================================== */
 
-/* =========================
-   6. BILDHAUERISCHE SYSTEMDYNAMIK (FLUSS & REIBUNG)
-========================= */
-window.addEventListener("mousemove", (e) => {
-  mouse.x = (e.clientX / window.innerWidth - 0.5) * 140;
-  mouse.y = -(e.clientY / window.innerHeight - 0.5) * 100;
+const mouse = {
+  x:window.innerWidth/2,
+  y:window.innerHeight/2
+};
+
+window.addEventListener("mousemove",(e)=>{
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
 });
 
-function animate() {
+/* ======================================================
+   CAMERA INTERACTION
+====================================================== */
+
+let cameraData = null;
+
+async function initCamera(){
+
+  try{
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:true
+    });
+
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.play();
+
+    cameraData = video;
+
+    console.log("📷 CAMERA ACTIVE");
+
+  }catch(err){
+
+    console.log("❌ camera denied");
+  }
+}
+
+initCamera();
+
+/* ======================================================
+   SOUND ENGINE
+====================================================== */
+
+let audioStarted = false;
+
+window.addEventListener("click",()=>{
+
+  if(audioStarted) return;
+
+  audioStarted = true;
+
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const noise = ctx.createBufferSource();
+
+  const buffer = ctx.createBuffer(
+    1,
+    ctx.sampleRate * 3,
+    ctx.sampleRate
+  );
+
+  const data = buffer.getChannelData(0);
+
+  for(let i=0;i<data.length;i++){
+    data[i] = Math.random()*2-1;
+  }
+
+  noise.buffer = buffer;
+  noise.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 120;
+
+  const gain = ctx.createGain();
+  gain.gain.value = .05;
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  noise.start();
+
+  console.log("🔊 NOISE ENGINE ACTIVE");
+
+});
+
+/* ======================================================
+   CHAOS OVERLAY
+====================================================== */
+
+const overlay = document.getElementById("overlay");
+const octx = overlay.getContext("2d");
+
+function resizeOverlay(){
+  overlay.width = innerWidth;
+  overlay.height = innerHeight;
+}
+
+resizeOverlay();
+
+window.addEventListener("resize",resizeOverlay);
+
+/* ======================================================
+   MAIN ENGINE
+====================================================== */
+
+function animate(){
+
   requestAnimationFrame(animate);
-  const time = Date.now() * 0.001;
-  
-  // Die Hand des Betrachters formt das Gravitationsfeld
-  const visitorTarget = new THREE.Vector3(mouse.x, mouse.y, 0);
-  
-  nodes.forEach((node, i) => {
-    // Kraftfeld A: Sanfter Sog zum Nullpunkt des Ateliers
-    let toCenter = new THREE.Vector3(0,0,0).sub(node.position).multiplyScalar(0.0015);
-    
-    // Kraftfeld B: Plastische Verschiebung durch Mausinteraktion
-    let toVisitor = new THREE.Vector3().subVectors(visitorTarget, node.position);
-    let distance = toVisitor.length();
-    
-    if(distance < 120) {
-      // Je näher die Maus kommt, desto stärker wird das Material verdrängt oder angezogen (Viskosität)
-      toVisitor.normalize().multiplyScalar((120 - distance) * 0.03);
-    } else {
-      toVisitor.set(0,0,0);
+
+  octx.clearRect(0,0,overlay.width,overlay.height);
+
+  const t = performance.now() * .001;
+
+  particles.forEach((p,i)=>{
+
+    const dx = mouse.x - p.x;
+    const dy = mouse.y - p.y;
+
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    /* FORCE FIELD */
+
+    if(dist < 260){
+
+      p.vx -= dx * 0.0008;
+      p.vy -= dy * 0.0008;
+
+      p.el.classList.add("flash");
+
+    }else{
+      p.el.classList.remove("flash");
     }
-    
-    // Kraftfeld C: Inhärentes Zittern (Die Reibung im Vollzug)
-    let jitter = new THREE.Vector3(
-      Math.sin(time * 3 + i) * 0.15,
-      Math.cos(time * 2.5 + i) * 0.15,
-      0
-    );
-    
-    velocity[i].add(toCenter);
-    velocity[i].add(toVisitor);
-    velocity[i].add(jitter);
-    velocity[i].multiplyScalar(0.94); // Dämpfung durch Raumwiderstand
-    
-    node.position.add(velocity[i]);
-    
-    // Autonome langsame Rotation des Steinkörpers
-    node.rotation.x += node.userData.rotationSpeed.x;
-    node.rotation.y += node.userData.rotationSpeed.y;
-    
-    // KNET-EFFEKT: Organische Dehnung der Gesteinsmasse im Fluss
-    const pulse = 1.0 + Math.sin(time * 1.5 + node.userData.seed) * 0.08;
-    node.scale.set(pulse, pulse + (velocity[i].y * 0.05), pulse);
-    
-    // KOLLISIONS-WARNUNG: Bei starker Eigenbewegung fängt das Material an gelb aufzuglühen
-    if(velocity[i].length() > 1.5) {
-      node.material.emissive.setHex(0x332b00); // Inneres Glühen bei Reibung
-    } else {
-      node.material.emissive.setHex(0x000000);
+
+    /* CHAOS */
+
+    p.vx += Math.sin(t + i) * 0.02;
+    p.vy += Math.cos(t + i) * 0.02;
+
+    p.vx *= .98;
+    p.vy *= .98;
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    /* SCREEN WRAP */
+
+    if(p.x < -300) p.x = innerWidth + 300;
+    if(p.x > innerWidth + 300) p.x = -300;
+
+    if(p.y < -300) p.y = innerHeight + 300;
+    if(p.y > innerHeight + 300) p.y = -300;
+
+    /* TYPO DESTRUCTION */
+
+    const scale =
+      1 +
+      Math.sin(t*2+i)*0.4 +
+      (260-dist)/260;
+
+    const blur =
+      Math.max(0, (120-dist)/40);
+
+    p.rot += p.vx * 0.5;
+
+    p.el.style.transform = `
+      translate(${p.x}px, ${p.y}px)
+      scale(${scale})
+      rotate(${p.rot}deg)
+    `;
+
+    p.el.style.filter = `
+      blur(${blur}px)
+    `;
+
+    p.el.style.opacity =
+      Math.max(.2, 1 - dist/500);
+
+    /* CONNECTIONS */
+
+    if(i % 5 === 0){
+
+      octx.beginPath();
+
+      octx.moveTo(p.x,p.y);
+
+      octx.lineTo(
+        mouse.x,
+        mouse.y
+      );
+
+      octx.strokeStyle =
+        "rgba(255,230,0,.06)";
+
+      octx.lineWidth = 1;
+
+      octx.stroke();
     }
+
   });
-  
-  // Lichtquelle kreist dezent im Raum für wechselnde Schattenkanten auf den Texten
-  industrialLight.position.x = Math.sin(time * 0.5) * 150;
-  industrialLight.position.z = Math.cos(time * 0.5) * 150;
-  
-  renderer.render(scene, camera);
+
+  /* GENERATIVE CONSTRUCTION LINES */
+
+  for(let i=0;i<40;i++){
+
+    octx.beginPath();
+
+    octx.moveTo(
+      Math.random()*innerWidth,
+      Math.random()*innerHeight
+    );
+
+    octx.lineTo(
+      Math.random()*innerWidth,
+      Math.random()*innerHeight
+    );
+
+    octx.strokeStyle =
+      `rgba(255,255,255,${Math.random()*0.03})`;
+
+    octx.stroke();
+  }
+
 }
 
 animate();
 
-/* =========================
-   7. ANPASSUNG AN FRONTEND-GRÖẞE
-========================= */
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
 </script>
 
 </body>
