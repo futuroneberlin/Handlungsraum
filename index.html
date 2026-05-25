@@ -102,11 +102,11 @@ function buildField(data, offsetX) {
 ========================= */
 async function start() {
 
-  const kunstraum = await loadData("kunstraum.json");
-  const handlungsraum = await loadData("handlungsraum.json");
+  const kunstraumeins = await loadData("kunstraum.json");
+  const handlungsraumeins = await loadData("handlungsraum.json");
 
-  buildField(kunstraum, -30);
-  buildField(handlungsraum, 30);
+  buildField(kunstraumeins, -30);
+  buildField(handlungsraumeins, 30);
 
   animate();
 }
