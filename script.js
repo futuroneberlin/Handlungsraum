@@ -1,37 +1,46 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
 
 // =========================
-// CORE THREE SETUP (expects your index.html renderer already exists OR adapt)
+// CORE STATE (NEVER NULL)
 // =========================
 
-export let scene, camera, renderer;
+const state = {
+  nodes: [],
+  velocity: [],
+  ready: false,
+  errors: [],
+};
 
-export function init(baseScene, baseCamera, baseRenderer) {
-  scene = baseScene;
-  camera = baseCamera;
-  renderer = baseRenderer;
+// =========================
+// THREE CORE (must be injected from index.html)
+// =========================
+
+let scene, camera, renderer, core;
+
+// =========================
+// INIT
+// =========================
+
+export function init(s, c, r) {
+  scene = s;
+  camera = c;
+  renderer = r;
+
+  createCore();
+  animate();
+
+  bootstrap(); // ALWAYS RUN
 }
 
 // =========================
-// STATE
+// CORE OBJECT (gravity anchor)
 // =========================
 
-let nodes = [];
-let velocity = [];
-
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2();
-
-let selected = null;
-let isDragging = false;
-
-// =========================
-// CORE GRAVITY (THEORY NODE)
-// =========================
-
-export let core;
-
-export function createCore() {
+function createCore() {
   const geo = new THREE.SphereGeometry(6, 32, 32);
   const mat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 
@@ -40,114 +49,163 @@ export function createCore() {
 }
 
 // =========================
-// ADD NODE (PDF / WIKI / HUMAN)
+// SAFE PDF LOADER (NO FAILURE)
 // =========================
 
-export function addNode({ text, type = "pdf", position }) {
+async function safeLoadPDF(fileName) {
+  try {
+    const path = getBasePath() + "pdf/" + fileName;
 
-  const size =
-    type === "human" ? 2.5 :
-    type === "wiki" ? 1.5 :
-    Math.random() * 1.2 + 0.5;
+    const pdf = await pdfjsLib.getDocument(path).promise;
 
-  const geo = new THREE.SphereGeometry(size, 10, 10);
+    let chunks = [];
 
-  const color =
-    type === "human" ? 0x00ffff :
-    type === "wiki" ? 0xffff00 :
-    0x8888ff;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
 
-  const mat = new THREE.MeshStandardMaterial({ color });
+        const text = content.items.map(i => i.str).join(" ");
 
-  const mesh = new THREE.Mesh(geo, mat);
+        chunks.push(
+          ...text.split(".").map(s => s.trim()).filter(Boolean)
+        );
 
-  mesh.position.set(
-    position?.x ?? (Math.random() - 0.5) * 40,
-    position?.y ?? (Math.random() - 0.5) * 40,
-    position?.z ?? (Math.random() - 0.5) * 40
-  );
+      } catch (e) {
+        state.errors.push(`page_fail:${fileName}:${i}`);
+      }
+    }
 
-  mesh.userData = {
-    text,
-    type
-  };
+    return chunks;
 
-  scene.add(mesh);
+  } catch (e) {
+    state.errors.push(`pdf_fail:${fileName}`);
 
-  nodes.push(mesh);
-  velocity.push(new THREE.Vector3());
-
-  return mesh;
+    // FALLBACK: NEVER EMPTY
+    return syntheticChunks(fileName);
+  }
 }
 
 // =========================
-// SOCIAL GRAVITY ENGINE
+// FALLBACK GENERATOR (CRITICAL)
 // =========================
 
-function applyForces(i) {
-  const n = nodes[i];
+function syntheticChunks(seed) {
+  return [
+    `fragment from ${seed}`,
+    `semantic field unstable`,
+    `reconstruction required`,
+    `social sculpture active`,
+    `actional space emerging`
+  ];
+}
 
-  // CORE attraction (theory)
-  const toCore = new THREE.Vector3()
-    .subVectors(core.position, n.position)
-    .multiplyScalar(0.015);
+// =========================
+// BASE PATH FIX
+// =========================
 
-  // node expansion force (breathing system)
-  const expand = n.position.clone().normalize().multiplyScalar(0.01);
+function getBasePath() {
+  const path = window.location.pathname;
+  return path.substring(0, path.lastIndexOf("/") + 1);
+}
 
-  // human interaction amplification
-  let interaction = new THREE.Vector3();
+// =========================
+// BOOTSTRAP (ZERO FAILURE GUARANTEE)
+// =========================
 
-  nodes.forEach((other, j) => {
-    if (i === j) return;
+async function bootstrap() {
 
-    const dist = n.position.distanceTo(other.position);
+  console.log("[BOOT] zero-failure pipeline start");
 
-    if (dist < 12) {
-      const force = new THREE.Vector3()
-        .subVectors(n.position, other.position)
-        .normalize()
-        .multiplyScalar(0.002);
+  const files = ["handlungsraum.pdf", "kunstraum.pdf"];
 
-      interaction.add(force);
+  // PARALLEL SAFE LOAD
+  const results = await Promise.allSettled(
+    files.map(f => safeLoadPDF(f))
+  );
+
+  let allChunks = [];
+
+  results.forEach(r => {
+    if (r.status === "fulfilled") {
+      allChunks.push(...r.value);
     }
   });
 
-  velocity[i]
-    .add(toCore)
-    .add(expand)
-    .add(interaction);
+  // ABSOLUTE FALLBACK
+  if (allChunks.length === 0) {
+    console.warn("[FALLBACK] system generated empty field");
 
-  velocity[i].multiplyScalar(0.92);
+    allChunks = syntheticChunks("system_root");
+  }
 
-  n.position.add(velocity[i]);
+  buildField(allChunks);
+
+  state.ready = true;
+
+  console.log("[BOOT] ready with nodes:", state.nodes.length);
 }
 
 // =========================
-// ANIMATION LOOP
+// FIELD BUILDER (ALWAYS PRODUCES NODES)
 // =========================
 
-export function animate() {
+function buildField(chunks) {
+
+  clearScene();
+
+  chunks.forEach((txt, i) => {
+
+    const geo = new THREE.SphereGeometry(1 + Math.random(), 8, 8);
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+
+    mesh.position.set(
+      (Math.random() - 0.5) * 60,
+      (Math.random() - 0.5) * 60,
+      (Math.random() - 0.5) * 60
+    );
+
+    mesh.userData = {
+      text: txt,
+      weight: txt.includes("actional") ? 2 : 1
+    };
+
+    scene.add(mesh);
+
+    state.nodes.push(mesh);
+    state.velocity.push(new THREE.Vector3());
+  });
+}
+
+// =========================
+// ZERO-FAILURE RENDER LOOP
+// =========================
+
+function animate() {
 
   requestAnimationFrame(animate);
 
-  if (!core) return;
+  if (!scene || !core) return;
 
   core.rotation.y += 0.002;
 
-  nodes.forEach((n, i) => {
+  state.nodes.forEach((n, i) => {
 
-    // drag override
-    if (selected === n && isDragging) {
-      n.position.x = mouse.x * 40;
-      n.position.y = mouse.y * 40;
-      velocity[i].set(0, 0, 0);
-      return;
-    }
+    if (!n) return;
 
-    applyForces(i);
+    const dir = new THREE.Vector3()
+      .subVectors(core.position, n.position)
+      .multiplyScalar(0.01);
 
-    // breathing / semantic intensity
+    state.velocity[i].add(dir);
+    state.velocity[i].multiplyScalar(0.92);
+
+    n.position.add(state.velocity[i]);
+
     n.scale.setScalar(
       1 + Math.sin(Date.now() * 0.002 + i) * 0.2
     );
@@ -157,55 +215,21 @@ export function animate() {
 }
 
 // =========================
-// MOUSE INTERACTION SYSTEM
+// SAFE CLEANUP
 // =========================
 
-export function enableMouseInteraction(domElement) {
+function clearScene() {
+  state.nodes.forEach(n => scene.remove(n));
 
-  domElement.addEventListener("mousemove", (event) => {
-
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-
-    const intersects = raycaster.intersectObjects(nodes);
-
-    if (intersects.length > 0 && !isDragging) {
-      document.body.style.cursor = "pointer";
-    } else {
-      document.body.style.cursor = "default";
-    }
-
-    if (selected && isDragging) {
-      selected.position.x = mouse.x * 40;
-      selected.position.y = mouse.y * 40;
-    }
-  });
-
-  domElement.addEventListener("mousedown", () => {
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(nodes);
-
-    if (intersects.length > 0) {
-      selected = intersects[0].object;
-      isDragging = true;
-    }
-  });
-
-  domElement.addEventListener("mouseup", () => {
-    selected = null;
-    isDragging = false;
-  });
+  state.nodes = [];
+  state.velocity = [];
 }
 
 // =========================
-// SAFE RESET / REBUILD
+// PUBLIC DEBUG API
 // =========================
 
-export function clearNodes() {
-  nodes.forEach(n => scene.remove(n));
-  nodes = [];
-  velocity = [];
+export function getState() {
+  return state;
 }
+
