@@ -1,425 +1,273 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8" />
-
-<title>INSTALLATION AI — SOCIAL SCULPTURE MODE</title>
-
-
+<title>FORMKUNST AI — MONUMENTAL SOCIAL SCULPTURE</title>
 
 <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body, html { 
+    margin: 0; 
+    overflow: hidden; 
+    background: #000000; 
+    width: 100%; 
+    height: 100%;
+    font-family: 'Arial Black', 'Impact', sans-serif;
+  }
+  
+  /* Das WebGL Canvas für den energetischen Hintergrund */
+  canvas { 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    z-index: 1; 
+    pointer-events: none; 
+  }
 
-  body { margin:0; overflow:hidden; background:black; }
+  /* Die bildhauerische CSS3D-Textebene (Vergrößert & Kuratiert) */
+  .sculptural-word {
+    position: absolute;
+    font-size: 5rem; /* Drastisch vergrößert für monumentale Wirkung */
+    font-weight: 900;
+    color: #FFDE00; /* Warngelb */
+    text-transform: uppercase;
+    letter-spacing: -3px;
+    white-space: nowrap;
+    padding: 15px 30px;
+    border: 3px solid #FFDE00;
+    background: #000000;
+    user-select: none;
+    backface-visibility: hidden;
+    mix-blend-mode: difference;
+    transition: filter 0.1s ease;
+  }
 
-  canvas { display:block; }
-
+  /* Brutalistisches Metadaten-Overlay für den Handlungsraum */
+  #blueprint-overlay {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    z-index: 10;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #555555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
 </style>
 
-
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/renderers/CSS3DRenderer.js"></script>
 </head>
-
-
 
 <body>
 
-
+<div id="blueprint-overlay">
+  Status: Runtime Process // Formkunst Active // Grid: Yellow & Black
+</div>
 
 <script>
-
-console.log("🟣 INSTALLATION AI ACTIVE");
-
-
+console.log("🟡 MONUMENTAL FORMKUNST ENGINE ACTIVE");
 
 /* =========================
-
-   BASIC SCENE
-
+   SCENE & CAMERA SETUP
 ========================= */
-
 const scene = new THREE.Scene();
 
+// Kamera-Schnittstelle weit in den Raum versetzt für maximale Tiefenwirkung
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+camera.position.z = 400;
 
-
-const camera = new THREE.PerspectiveCamera(
-
-  70, innerWidth/innerHeight, 0.1, 2000
-
-);
-
-camera.position.z = 180;
-
-
-
-const renderer = new THREE.WebGLRenderer({ antialias:true });
-
-renderer.setSize(innerWidth, innerHeight);
-
+/* WEBGL RENDERER (Hintergrund-Energie) */
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+/* CSS3D RENDERER (Die eigentliche Text-Skulptur) */
+const cssRenderer = new THREE.RECONSTRUCTED?.CSS3DRenderer ? new THREE.RECONSTRUCTED.CSS3DRenderer() : new THREE.CSS3DRenderer();
+cssRenderer.setSize(window.innerWidth, window.innerHeight);
+cssRenderer.domElement.style.position = 'absolute';
+cssRenderer.domElement.style.top = '0';
+cssRenderer.domElement.style.zIndex = '2';
+document.body.appendChild(cssRenderer.domElement);
 
-
-/* LIGHT FIELD */
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-const light = new THREE.PointLight(0xff00ff, 2);
-
-light.position.set(100,100,100);
-
-scene.add(light);
-
-
-
-/* CORE (SOCIAL GRAVITY CENTER) */
-
-const core = new THREE.Mesh(
-
-  new THREE.SphereGeometry(12, 32, 32),
-
-  new THREE.MeshStandardMaterial({
-
-    color: 0xff00ff,
-
-    emissive: 0x550055,
-
-    emissiveIntensity: 0.8
-
-  })
-
-);
-
+/* ENERGETISCHES KRAFTZENTRUM (CORE) */
+const coreGeo = new THREE.SphereGeometry(35, 32, 32); // Vergrößertes Zentrum
+const coreMat = new THREE.MeshBasicMaterial({
+  color: 0xffde00,
+  wireframe: true // Brutalistisches Gittermodell statt glatter Kugel
+});
+const core = new THREE.Mesh(coreGeo, coreMat);
 scene.add(core);
 
-
-
 /* =========================
-
-   TEXT FIELD (CONCEPTUAL ENGINE)
-
+   DAS KUNSTTHEORETISCHE LEXIKON
 ========================= */
-
 let words = [
-
   "Instrumentalisierung",
-
   "Potenzial",
-
   "Transformation",
-
   "Resonanz",
-
   "Kraft",
-
   "Vermögen",
-
   "Handlung",
-
   "Raum",
-
   "Zeit",
-
   "Kollektiv",
-
   "Interaktion",
-
-  "Form",
-
+  "Formkunst",
   "Wahrnehmung",
-
-  "Struktur"
-
+  "Struktur",
+  "Reibung",
+  "Achtsam"
 ];
 
-
-
-/* =========================
-
-   STATE
-
-========================= */
-
 const nodes = [];
-
 const velocity = [];
+const mouse = new THREE.Vector3(0, 0, 0);
 
-
-
-/* mouse = visitor force */
-
-const mouse = new THREE.Vector3(0,0,0);
-
-
-
-addEventListener("mousemove",(e)=>{
-
-  mouse.x = (e.clientX / innerWidth - 0.5) * 2;
-
-  mouse.y = -(e.clientY / innerHeight - 0.5) * 2;
-
+window.addEventListener("mousemove", (e) => {
+  mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouse.y = -(e.clientY / window.innerHeight - 0.5) * 2;
 });
 
-
-
 /* =========================
-
-   BUILD SYSTEM
-
+   MONUMENTALE WORTGENESE
 ========================= */
+function spawnSculpturalWord(text) {
+  // 1. Erstelle das kuratierte HTML-Element
+  const div = document.createElement('div');
+  div.className = 'sculptural-word';
+  div.innerText = text.toUpperCase();
 
-function spawnWord(text){
-
-
-
-  const geo = new THREE.SphereGeometry(2.5, 16, 16);
-
-  const mat = new THREE.MeshStandardMaterial({
-
-    color: new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
-
-  });
-
-
-
-  const m = new THREE.Mesh(geo, mat);
-
-
-
-  m.position.set(
-
-    (Math.random()-0.5)*120,
-
-    (Math.random()-0.5)*80,
-
-    (Math.random()-0.5)*120
-
+  // 2. Übersetze das HTML-Element in ein echtes 3D-Objekt
+  const object3D = new THREE.CSS3DObject(div);
+  
+  // Monumentale Streuung im Raum
+  object3D.position.set(
+    (Math.random() - 0.5) * 700,
+    (Math.random() - 0.5) * 500,
+    (Math.random() - 0.5) * 400
   );
 
+  // Zufällige Neigung im Raum für eine echte skulpturale Schichtung
+  object3D.rotation.z = (Math.random() - 0.5) * 0.3;
 
-
-  m.userData = {
-
-    text,
-
-    chaos: Math.random()
-
+  object3D.userData = {
+    text: text,
+    element: div,
+    seed: Math.random() * 100
   };
 
-
-
-  scene.add(m);
-
-  nodes.push(m);
-
+  scene.add(object3D);
+  nodes.push(object3D);
   velocity.push(new THREE.Vector3());
-
 }
 
-
-
-/* initial field */
-
-words.forEach(spawnWord);
-
-
+// Initialbefüllung des Handlungsraums
+words.forEach(spawnSculpturalWord);
 
 /* =========================
-
-   SELF-ORGANIZING LOGIC
-
+   PROZESSUALE SYSTEMLOGIK (DEWEY / HEIDEGGER)
 ========================= */
+function updateSystem() {
+  const time = Date.now() * 0.001;
+  const visitorForce = new THREE.Vector3(mouse.x * 250, mouse.y * 250, 0);
 
-function updateSystem(){
-
-
-
-  // visitor force = mouse acts like gravity field
-
-  const visitorForce = new THREE.Vector3(mouse.x*60, mouse.y*60, 0);
-
-
-
-  nodes.forEach((n,i)=>{
-
-
-
-    // core attraction
-
+  nodes.forEach((n, i) => {
+    // 1. Core Attraction (Zentralisierung der Kraft)
     let toCore = new THREE.Vector3()
-
       .subVectors(core.position, n.position)
+      .multiplyScalar(0.006);
 
-      .multiplyScalar(0.008);
-
-
-
-    // mouse attraction (visitor = sculptor)
-
+    // 2. Visitor Force (Die Hand des Bildhauers / Mausbewegung)
     let toVisitor = new THREE.Vector3()
-
       .subVectors(visitorForce, n.position)
+      .multiplyScalar(0.003);
 
-      .multiplyScalar(0.004);
-
-
-
-    // chaotic drift (social instability)
-
-    let chaos = new THREE.Vector3(
-
-      Math.sin(Date.now()*0.001 + i)*0.2,
-
-      Math.cos(Date.now()*0.001 + i)*0.2,
-
-      Math.sin(Date.now()*0.0015 + i)*0.2
-
+    // 3. Produktions-Reibung (Zittern und Drift)
+    let frictionChaos = new THREE.Vector3(
+      Math.sin(time + i + n.userData.seed) * 0.9,
+      Math.cos(time * 0.8 + i) * 0.9,
+      Math.sin(time * 1.2 + i) * 0.5
     );
 
-
-
     velocity[i].add(toCore);
-
     velocity[i].add(toVisitor);
-
-    velocity[i].add(chaos);
-
-
-
-    velocity[i].multiplyScalar(0.90);
-
-
+    velocity[i].add(frictionChaos);
+    velocity[i].multiplyScalar(0.93); // Viskosität des Raums
 
     n.position.add(velocity[i]);
 
+    // Organische Verformung durch Skalierung (Breathing Matter)
+    const dynamicScale = 1.0 + Math.sin(time * 2 + i) * 0.12;
+    n.scale.setScalar(dynamicScale);
 
-
-    // BREATHING = living matter
-
-    const s = 1.2 + Math.sin(Date.now()*0.002 + i)*0.4;
-
-    n.scale.setScalar(s);
-
-
-
-    // TEXT REORGANIZATION (soft mutation)
-
-    if(Math.random() < 0.002){
-
-      n.userData.text =
-
-        words[Math.floor(Math.random()*words.length)];
-
+    // Reibungs-Indikator: Wenn Wörter intensiv driften, verzerren sie sich visuell (Warp-Filter)
+    const speed = velocity[i].length();
+    if (speed > 3) {
+      n.userData.element.style.filter = `skewX(${speed * 2}deg) blur(1px)`;
+      n.userData.element.style.color = '#FFFFFF'; // Schlägt bei starker Bewegung in Weiß um
+    } else {
+      n.userData.element.style.filter = 'none';
+      n.userData.element.style.color = '#FFDE00';
     }
-
   });
 
-
-
-  // CORE also reacts
-
-  core.rotation.y += 0.003;
-
-  core.scale.setScalar(1 + Math.sin(Date.now()*0.001)*0.1);
-
+  // Der Gitter-Core im Zentrum pulsiert gewaltig
+  core.rotation.y += 0.005;
+  core.rotation.x += 0.002;
+  const corePulse = 1.5 + Math.sin(time * 3) * 0.4;
+  core.scale.setScalar(corePulse);
 }
 
-
-
 /* =========================
-
-   TEXT MUTATION EVENT
-
+   AUTONOME METAMORPHOSE (UNFERTIGER ZYKLUS)
 ========================= */
-
-setInterval(()=>{
-
-
-
-  // social sculpture mutation event
-
-  for(let i=0;i<2;i++){
-
-    const t = words[Math.floor(Math.random()*words.length)];
-
-    spawnWord(t);
-
+setInterval(() => {
+  // Das Kollektiv wächst autonom weiter
+  if (nodes.length < 45) {
+    const randomTerm = words[Math.floor(Math.random() * words.length)];
+    spawnSculpturalWord(randomTerm);
   }
 
-
-
-  // prevent overflow
-
-  if(nodes.length > 120){
-
-    const m = nodes.shift();
-
-    scene.remove(m);
-
+  // Schutz vor totalem Chaos (Erosion alter Begriffe)
+  if (nodes.length > 35) {
+    const deadNode = nodes.shift();
+    scene.remove(deadNode);
+    if(deadNode.userData.element.parentNode) {
+      deadNode.userData.element.parentNode.removeChild(deadNode.userData.element);
+    }
     velocity.shift();
-
   }
-
-
-
-}, 2500);
-
-
+}, 3000);
 
 /* =========================
-
-   RENDER LOOP
-
+   ANIMATION LOOP
 ========================= */
-
-function animate(){
-
-
-
+function animate() {
   requestAnimationFrame(animate);
-
-
-
   updateSystem();
-
-
-
-  renderer.render(scene,camera);
-
+  
+  renderer.render(scene, camera);
+  cssRenderer.render(scene, camera);
 }
-
-
-
 animate();
 
-
-
 /* =========================
-
-   RESIZE
-
+   DYNAMIC RESIZE
 ========================= */
-
-addEventListener("resize",()=>{
-
-  camera.aspect = innerWidth/innerHeight;
-
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
-  renderer.setSize(innerWidth,innerHeight);
-
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  cssRenderer.setSize(window.innerWidth, window.innerHeight);
 });
-
 </script>
 
-
-
 </body>
+</html>
 
-</html>... was ist das für ein code 
+
 
 
