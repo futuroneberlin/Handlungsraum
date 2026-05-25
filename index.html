@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Handlungsraum – Stable Field Mode</title>
+<title>Handlungsraum – Clean Field Mode</title>
 
 <style>
   body { margin: 0; overflow: hidden; background: black; }
   canvas { display: block; }
 </style>
 
-<!-- THREE.JS -->
+<!-- THREE.JS (OK, warning ignorierbar) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 </head>
@@ -17,10 +17,10 @@
 <body>
 
 <script>
-console.log("🧠 FIELD MODE START");
+console.log("🧠 CLEAN FIELD MODE ACTIVE");
 
 /* =========================
-   BASIC SETUP
+   SCENE SETUP
 ========================= */
 const scene = new THREE.Scene();
 
@@ -37,12 +37,12 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* LIGHT (optional but stable) */
+/* LIGHT */
 const light = new THREE.PointLight(0xffffff, 2);
 light.position.set(50, 50, 50);
 scene.add(light);
 
-/* CORE (THEORY CENTER) */
+/* CORE (CENTER THEORY NODE) */
 const core = new THREE.Mesh(
   new THREE.SphereGeometry(6, 32, 32),
   new THREE.MeshBasicMaterial({ color: 0xff00ff })
@@ -50,13 +50,13 @@ const core = new THREE.Mesh(
 scene.add(core);
 
 /* =========================
-   SYSTEM STATE
+   STATE
 ========================= */
 const nodes = [];
 const velocity = [];
 
 /* =========================
-   FILES (YOUR REAL DATA)
+   YOUR PDF ENTITIES (NO PARSING)
 ========================= */
 const FILES = [
   "handlungsraum.pdf",
@@ -64,14 +64,12 @@ const FILES = [
 ];
 
 /* =========================
-   BUILD NODES FROM FILES
-   (NO PDF PARSING — STABLE MODE)
+   BUILD FIELD (SAFE VERSION)
 ========================= */
-function buildField(files) {
+function buildField() {
 
-  files.forEach((name, i) => {
+  FILES.forEach((file, i) => {
 
-    // create visual object per PDF
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(3, 24, 24),
       new THREE.MeshBasicMaterial({
@@ -80,39 +78,30 @@ function buildField(files) {
     );
 
     mesh.position.set(
-      (Math.random() - 0.5) * 50,
-      (Math.random() - 0.5) * 50,
-      (Math.random() - 0.5) * 50
+      (Math.random() - 0.5) * 60,
+      (Math.random() - 0.5) * 60,
+      (Math.random() - 0.5) * 60
     );
 
-    mesh.userData = {
-      file: name,
-      type: "pdf_object"
-    };
+    mesh.userData = { file };
 
     scene.add(mesh);
 
     nodes.push(mesh);
     velocity.push(new THREE.Vector3());
 
-    console.log("📄 node created:", name);
+    console.log("📄 node:", file);
   });
 }
 
 /* =========================
-   INIT
+   START
 ========================= */
-function start() {
-
-  buildField(FILES);
-
-  animate();
-}
-
-start();
+buildField();
+animate();
 
 /* =========================
-   ANIMATION (GRAVITY FIELD)
+   LOOP
 ========================= */
 function animate() {
 
@@ -132,7 +121,7 @@ function animate() {
     n.position.add(velocity[i]);
 
     n.scale.setScalar(
-      1 + Math.sin(Date.now() * 0.002 + i) * 0.3
+      1 + Math.sin(Date.now()*0.002 + i) * 0.3
     );
   });
 
