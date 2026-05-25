@@ -1,67 +1,75 @@
-Handlungsraum
+# Handlungsraum
 
-Handlungsraum ist eine typografische Skulptur im Canvas: ein langsamer Aufbauprozess, in dem Sprache als Material, Fragment und Fundament lesbar wird.
+Handlungsraum ist ein digitaler Handlungsraum ästhetischer Praxis: eine räumliche, typografische Skulptur, in der Sprache als Material, Relation und zeitlicher Aufbauprozess erfahrbar wird.
 
-Das Projekt entsteht im Kontext eines Bewerbungsprozesses für den Wechsel in die Bildhauerei und verbindet philosophische Ansätze von John Dewey („Kunst als Erfahrung“), Georg W. Bertram („Kunst als menschliche Praxis“) und Joseph Beuys („Soziale Plastik“) zu einem digitalen Raummodell.
+Das Projekt entsteht im Kontext eines Bewerbungsprozesses für den Wechsel in die Bildhauerei und verbindet philosophische Ansätze von John Dewey („Kunst als Erfahrung“), Georg W. Bertram („Kunst als menschliche Praxis“) und Joseph Beuys („Soziale Plastik“) zu einem prozessualen Raummodell.
 
-Im Zentrum steht ein kontinuierlicher Prozess des Aufbaus. Der Raum wirkt autonom, schwer und materiell, nicht wie ein Dashboard oder eine generative Demo.
+Im Zentrum steht wie Bedeutung räumlich entsteht, sich verdichtet und als Handlung erfahrbar wird.
 
-Konzept
+---
 
-Der Handlungsraum funktioniert als konstruktive Raumstruktur.
+## Konzept
 
-Textfragmente aus theoretischen PDF-Dokumenten werden als räumliche Bausteine behandelt. Sie erscheinen nacheinander, lagern sich ab und bilden ein lesbares Fundament.
+Der Handlungsraum funktioniert als kontinuierlicher Aufbauprozess.
 
-Der Raum entsteht durch Relation, Verdichtung und zeitliche Anordnung. Bewegung ist nur architektonische Verschiebung: langsam, stabil und lesbar.
+Texte, Begriffe und theoretische Fragmente werden nicht als Information dargestellt, sondern als räumliches Material behandelt. Sie treten in Relation, bewegen sich durch den Raum und lagern sich schrittweise zu semantischen Verdichtungen ab.
 
-PDF-Struktur
+Der Raum besitzt keinen finalen Zustand. Er entsteht fortlaufend durch zeitliche Anordnung, Bewegung, Leere und Relation.
 
-Die in /pdf hinterlegten Dokumente bilden das materielle Fundament des Systems.
+---
 
-Aktuell verarbeitet der Raum unter anderem:
+## Räumliche Struktur
 
-handlungsraum.pdf
-konzeptpapier.pdf
-kunstraum.pdf
+Der Raum gliedert sich in drei miteinander verbundene Ebenen:
 
-Die Inhalte werden fragmentiert, räumlich angeordnet und als typografische Struktur in den Canvas-Raum übertragen. Nicht einzelne Aussagen stehen im Vordergrund, sondern die Zusammenführung zu einem ruhigen, materialhaften Raumkörper.
+### Ingestion
+Links erscheinen theoretische und öffentliche Theorie-Textfragmente aus Wikipedia. Diese Ebene bildet das offene Rohmaterial des Systems.
 
-Wikipedia-Relationen
+### Transformation
+Im Zentrum werden Begriffe und Fragmente räumlich bewegt, gefiltert und zueinander in Beziehung gesetzt. Der Raum funktioniert hier als skulpturales Spannungsfeld zwischen Nähe, Distanz, Verdichtung und Leere.
 
-Zusätzlich integriert der Raum Live-Daten aus Wikipedia.
+### Foundation
+Rechts entstehen daraus langsam stabilisierte semantische Formationen. Die Theorie des „Actional Space of Aesthetic Practice“ fungiert dabei als konzeptuelles Gravitationsfeld.
 
-Diese Daten erscheinen als konstante, bewegte Netzebene am Rand des Raums. Sie ergänzt die Struktur, dominiert sie aber nicht.
+---
 
-Räumliche Prinzipien
+## Theorie
 
-Der Raum orientiert sich an vier stabilen Achsen:
+Der Handlungsraum versteht ästhetische Praxis als erweiterten bildhauerischen Raum.
 
-Aufbau
-Relation
-Bewegung
-Leere
+Das Kunstwerk verliert seine feste Objektidentität und wird zu einem Prozess aus Handlung, Interaktion, Zeitlichkeit und räumlicher Erfahrung.
 
-Wichtige gestalterische Prinzipien:
+Nicht das statische Objekt steht im Mittelpunkt, sondern die Transformation von Bedeutung durch Bewegung, Teilnahme und Relation.
 
-große negative Räume
-industrielle Grotesk-Typografie
-reduzierte Farbigkeit
-langsame Bewegungen
-architektonische Ordnung statt Partikelästhetik
-Technische Struktur
+---
 
-Das Projekt basiert bewusst auf einer einfachen, offenen Webstruktur:
+## Räumliche Prinzipien
 
-HTML5
-CSS3
-Vanilla JavaScript
-HTML5 Canvas
-PDF.js
+Der Raum orientiert sich an vier Achsen:
 
-Der Fokus liegt auf einer nachvollziehbaren räumlichen Logik und einer prozesshaften digitalen Materialität.
+- Aufbau
+- Relation
+- Bewegung
+- Leere
 
-Idee
+Gestalterische Prinzipien:
 
-Handlungsraum versteht digitale Kunst als sozialen und räumlichen Handlungsprozess.
+- große negative Räume
+- reduzierte Farbigkeit
+- industrielle Typografie
+- langsame Bewegungen
+- räumliche Spannung
+- architektonische Verdichtung
+- lesbare Prozesshaftigkeit
 
-Der Raum bleibt veränderbar. Er besitzt keinen finalen Zustand. Er entwickelt sich aus Text, Bewegung und Relation - Fundament für Fundament.
+---
+
+## Technische Struktur
+
+Die Anwendung basiert auf einer offenen Webstruktur mit React, SVG/Canvas und modularen semantischen Komponenten.
+
+Wikipedia- und PDF-Fragmente werden  als bewegliches sprachliches Material innerhalb eines räumlichen Systems.
+
+Der Fokus liegt  auf einer prozesshaften digitalen Materialität.
+
+
