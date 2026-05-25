@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Handlungsraum – Stable Museum Mode</title>
+<title>Handlungsraum – Stable Field Mode</title>
 
 <style>
   body { margin: 0; overflow: hidden; background: black; }
@@ -12,24 +12,15 @@
 <!-- THREE.JS -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
-<!-- PDF.js (IMPORTANT: legacy build = GLOBAL pdfjsLib) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
-
 </head>
 
 <body>
 
 <script>
-console.log("🧠 SYSTEM BOOT: MUSEUM MODE ACTIVE");
+console.log("🧠 FIELD MODE START");
 
 /* =========================
-   PDF.JS SETUP (CRITICAL FIX)
-========================= */
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
-
-/* =========================
-   THREE SETUP
+   BASIC SETUP
 ========================= */
 const scene = new THREE.Scene();
 
@@ -46,7 +37,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* LIGHT */
+/* LIGHT (optional but stable) */
 const light = new THREE.PointLight(0xffffff, 2);
 light.position.set(50, 50, 50);
 scene.add(light);
@@ -58,105 +49,62 @@ const core = new THREE.Mesh(
 );
 scene.add(core);
 
-/* STATE */
+/* =========================
+   SYSTEM STATE
+========================= */
 const nodes = [];
 const velocity = [];
 
 /* =========================
-   PDF FILES (FIXED)
+   FILES (YOUR REAL DATA)
 ========================= */
 const FILES = [
   "handlungsraum.pdf",
-  "kunstraum.pdf",
-  "konzeptpapier.pdf"
+  "kunstraum.pdf"
 ];
 
 /* =========================
-   SAFE PDF LOADER
+   BUILD NODES FROM FILES
+   (NO PDF PARSING — STABLE MODE)
 ========================= */
-async function loadPDF(file) {
+function buildField(files) {
 
-  try {
-    const pdf = await pdfjsLib.getDocument("./pdf/" + file).promise;
+  files.forEach((name, i) => {
 
-    let chunks = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-
-      const text = content.items.map(i => i.str).join(" ");
-
-      chunks.push(
-        ...text.split(".")
-          .map(t => t.trim())
-          .filter(Boolean)
-      );
-    }
-
-    console.log("📄 loaded:", file, "chunks:", chunks.length);
-    return chunks;
-
-  } catch (e) {
-
-    console.warn("⚠️ fallback activated:", file);
-
-    return [
-      "semantic fallback node",
-      "actional space active",
-      "social sculpture mode",
-      "system self-healing"
-    ];
-  }
-}
-
-/* =========================
-   BUILD FIELD
-========================= */
-function buildField(data) {
-
-  data.forEach((t, i) => {
-
+    // create visual object per PDF
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(1.5, 10, 10),
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
+      new THREE.SphereGeometry(3, 24, 24),
+      new THREE.MeshBasicMaterial({
+        color: i === 0 ? 0x00ffff : 0xffff00
       })
     );
 
     mesh.position.set(
-      (Math.random() - 0.5) * 60,
-      (Math.random() - 0.5) * 60,
-      (Math.random() - 0.5) * 60
+      (Math.random() - 0.5) * 50,
+      (Math.random() - 0.5) * 50,
+      (Math.random() - 0.5) * 50
     );
+
+    mesh.userData = {
+      file: name,
+      type: "pdf_object"
+    };
 
     scene.add(mesh);
 
     nodes.push(mesh);
     velocity.push(new THREE.Vector3());
-  });
 
-  console.log("🧬 field built:", nodes.length, "nodes");
+    console.log("📄 node created:", name);
+  });
 }
 
 /* =========================
-   BOOTSTRAP (ZERO FAILURE)
+   INIT
 ========================= */
-async function start() {
+function start() {
 
-  let all = [];
-
-  for (const f of FILES) {
-    const chunks = await loadPDF(f);
-    all.push(...chunks);
-  }
-
-  if (all.length === 0) {
-    all = ["system auto-generated node"];
-  }
-
-  buildField(all);
+  buildField(FILES);
 
   animate();
 }
@@ -164,7 +112,7 @@ async function start() {
 start();
 
 /* =========================
-   ANIMATION LOOP
+   ANIMATION (GRAVITY FIELD)
 ========================= */
 function animate() {
 
@@ -184,7 +132,7 @@ function animate() {
     n.position.add(velocity[i]);
 
     n.scale.setScalar(
-      1 + Math.sin(Date.now()*0.002 + i) * 0.2
+      1 + Math.sin(Date.now() * 0.002 + i) * 0.3
     );
   });
 
@@ -198,7 +146,6 @@ window.addEventListener("resize", () => {
 
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
