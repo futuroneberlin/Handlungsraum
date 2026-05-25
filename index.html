@@ -70,28 +70,47 @@ function buildField() {
 
   FILES.forEach((file, i) => {
 
+    // main node
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(3, 24, 24),
+      new THREE.SphereGeometry(4, 24, 24),
       new THREE.MeshBasicMaterial({
         color: i === 0 ? 0x00ffff : 0xffff00
       })
     );
 
     mesh.position.set(
-      (Math.random() - 0.5) * 60,
-      (Math.random() - 0.5) * 60,
-      (Math.random() - 0.5) * 60
+      (i - 0.5) * 40,
+      0,
+      0
     );
 
-    mesh.userData = { file };
-
     scene.add(mesh);
-
     nodes.push(mesh);
     velocity.push(new THREE.Vector3());
 
-    console.log("📄 node:", file);
+    // EXTRA: satellite nodes (IMPORTANT!)
+    for (let j = 0; j < 8; j++) {
+
+      const small = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 12, 12),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff
+        })
+      );
+
+      small.position.set(
+        mesh.position.x + (Math.random() - 0.5) * 20,
+        mesh.position.y + (Math.random() - 0.5) * 20,
+        mesh.position.z + (Math.random() - 0.5) * 20
+      );
+
+      scene.add(small);
+      nodes.push(small);
+      velocity.push(new THREE.Vector3());
+    }
   });
+
+  console.log("🧬 expanded field nodes:", nodes.length);
 }
 
 /* =========================
